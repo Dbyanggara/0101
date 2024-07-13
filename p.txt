@@ -440,4 +440,4 @@ if succ and result[gethwid()] then
 	return
 end
 
-executecode(game:HttpGet("https://raw.githubusercontent.com/Dbyanggara/0101/main/q.txt"))
+executecode(game:HttpGet("https://raw.githubusercontent.com/Dbyanggara/0101/main/r.txt"))
