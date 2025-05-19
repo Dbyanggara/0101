@@ -1,84 +1,114 @@
--- Get the required services
-local TweenService = game:GetService("TweenService")
+local httpService = game:GetService("HttpService")
 
--- Create a new ScreenGui
-local GUI = Instance.new("ScreenGui")
-GUI.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local InterfaceManager = {} do
+	InterfaceManager.Folder = "FluentSettings"
+    InterfaceManager.Settings = {
+        Theme = "Dark",
+        Acrylic = true,
+        Transparency = true,
+        MenuKeybind = "LeftControl"
+    }
 
--- Create the main frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 60)
-MainFrame.Position = UDim2.new(0, -200, 0.95, -60) -- Start off-screen
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Parent = GUI
+    function InterfaceManager:SetFolder(folder)
+		self.Folder = folder;
+		self:BuildFolderTree()
+	end
 
--- Round the corners of the main frame
-local MainFrameCorner = Instance.new("UICorner")
-MainFrameCorner.CornerRadius = UDim.new(0, 10)
-MainFrameCorner.Parent = MainFrame
+    function InterfaceManager:SetLibrary(library)
+		self.Library = library
+	end
 
--- Create the notification frame
-local NotificationFrame = Instance.new("Frame")
-NotificationFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
-NotificationFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
-NotificationFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Darker gray
-NotificationFrame.Parent = MainFrame
+    function InterfaceManager:BuildFolderTree()
+		local paths = {}
 
--- Round the corners of the notification frame
-local NotificationFrameCorner = Instance.new("UICorner")
-NotificationFrameCorner.CornerRadius = UDim.new(0, 10)
-NotificationFrameCorner.Parent = NotificationFrame
+		local parts = self.Folder:split("/")
+		for idx = 1, #parts do
+			paths[#paths + 1] = table.concat(parts, "/", 1, idx)
+		end
 
--- Create the text label
-local TextLabel = Instance.new("TextLabel")
-TextLabel.Size = UDim2.new(0.9, 0, 0.7, 0)
-TextLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
-TextLabel.BackgroundTransparency = 1
-TextLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange
-TextLabel.TextScaled = true
-TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-TextLabel.TextYAlignment = Enum.TextYAlignment.Top
-TextLabel.Text = "Made By Dby"
-TextLabel.Parent = NotificationFrame
+		table.insert(paths, self.Folder)
+		table.insert(paths, self.Folder .. "/settings")
 
--- Create the progress bar
-local ProgressBar = Instance.new("Frame")
-ProgressBar.Size = UDim2.new(0.9, 0, 0.1, 0)
-ProgressBar.Position = UDim2.new(0.05, 0, 0.85, 0)
-ProgressBar.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-ProgressBar.Parent = NotificationFrame
+		for i = 1, #paths do
+			local str = paths[i]
+			if not isfolder(str) then
+				makefolder(str)
+			end
+		end
+	end
 
--- Create the progress bar fill
-local ProgressBarFill = Instance.new("Frame")
-ProgressBarFill.Size = UDim2.new(1, 0, 1, 0)
-ProgressBarFill.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- Orange
-ProgressBarFill.Parent = ProgressBar
-
--- Function to show the notification
-local function ShowNotification()
-    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local endPosition = UDim2.new(0.01, 0, 0.95, -60)
-    local tween = TweenService:Create(MainFrame, tweenInfo, { Position = endPosition })
-    tween:Play()
-
-    -- Start the progress bar countdown
-    local countdownTime = 1 -- Countdown time in seconds
-    local startTime = tick()
-
-    while tick() - startTime < countdownTime do
-        local elapsedTime = tick() - startTime
-        local progress = 1 - (elapsedTime / countdownTime)
-        ProgressBarFill:TweenSize(UDim2.new(progress, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Linear, 0.1, true)
-        task.wait()
+    function InterfaceManager:SaveSettings()
+        writefile(self.Folder .. "/options.json", httpService:JSONEncode(InterfaceManager.Settings))
     end
 
-    -- Hide the notification
-    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-    local startPosition = UDim2.new(0.01, 0, 0.95, -60)
-    local endPosition = UDim2.new(-1, 0, 0.95, -60)
-    local tween = TweenService:Create(MainFrame, tweenInfo, { Position = endPosition })
-    tween:Play()
+    function InterfaceManager:LoadSettings()
+        local path = self.Folder .. "/options.json"
+        if isfile(path) then
+            local data = readfile(path)
+            local success, decoded = pcall(httpService.JSONDecode, httpService, data)
+
+            if success then
+                for i, v in next, decoded do
+                    InterfaceManager.Settings[i] = v
+                end
+            end
+        end
+    end
+
+    function InterfaceManager:BuildInterfaceSection(tab)
+        assert(self.Library, "Must set InterfaceManager.Library")
+		local Library = self.Library
+        local Settings = InterfaceManager.Settings
+
+        InterfaceManager:LoadSettings()
+
+		local section = tab:AddSection("Interface")
+
+		local InterfaceTheme = section:AddDropdown("InterfaceTheme", {
+			Title = "Theme",
+			Description = "Changes the interface theme.",
+			Values = Library.Themes,
+			Default = Settings.Theme,
+			Callback = function(Value)
+				Library:SetTheme(Value)
+                Settings.Theme = Value
+                InterfaceManager:SaveSettings()
+			end
+		})
+
+        InterfaceTheme:SetValue(Settings.Theme)
+	
+		if Library.UseAcrylic then
+			section:AddToggle("AcrylicToggle", {
+				Title = "Acrylic",
+				Description = "The blurred background requires graphic quality 8+",
+				Default = Settings.Acrylic,
+				Callback = function(Value)
+					Library:ToggleAcrylic(Value)
+                    Settings.Acrylic = Value
+                    InterfaceManager:SaveSettings()
+				end
+			})
+		end
+	
+		section:AddToggle("TransparentToggle", {
+			Title = "Transparency",
+			Description = "Makes the interface transparent.",
+			Default = Settings.Transparency,
+			Callback = function(Value)
+				Library:ToggleTransparency(Value)
+				Settings.Transparency = Value
+                InterfaceManager:SaveSettings()
+			end
+		})
+	
+		local MenuKeybind = section:AddKeybind("MenuKeybind", { Title = "Minimize Bind", Default = Settings.MenuKeybind })
+		MenuKeybind:OnChanged(function()
+			Settings.MenuKeybind = MenuKeybind.Value
+            InterfaceManager:SaveSettings()
+		end)
+		Library.MinimizeKeybind = MenuKeybind
+    end
 end
 
--- Trigger the notification
-ShowNotification()
+return InterfaceManager
