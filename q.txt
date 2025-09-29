@@ -14,14 +14,12 @@
     local VIM = game:GetService("VirtualInputManager")
 
     -- CONFIG
-    local config = { 
-        fpsCap = 9999, 
-        disableChat = true, -- Set to true to hide the chat 
-        enableBigButton = true, -- Set to true to enlarge the button in the shake UI 
-        bigButtonScaleFactor = 2, -- Scale factor for big button size 
-        shakeSpeed = 0.05, -- Lower value means faster shake (e.g., 0.05 for fast, 0.1 for normal) 
-        FreezeWhileFishing = true -- Set to true to freeze your character while fishing 
-    } 
+    local config = {
+        fpsCap = 9999, -- Default FPS cap
+        FreezeWhileFishing = true,
+        ShakeAlwaysCenter = true,
+        ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
+    }
     pcall(function() setfpscap(config.fpsCap) end)
 
     -- Disable chat if configured
@@ -150,6 +148,7 @@
     -- Jadikan title bar menu utama bisa digeser
     makeDraggable(mainFrame, mainFrame)
 
+
     -- List Layout (menggantikan Grid agar lebih fleksibel dan bisa menyesuaikan)
     local listLayout = Instance.new("UIListLayout")
     listLayout.Padding = UDim.new(0, 5)
@@ -163,7 +162,7 @@
     detailFrame.Size = UDim2.new(0, 250, 0, 200)
     detailFrame.Position = UDim2.new(1, 10, 0, 0) -- Posisi di sebelah kanan menu utama, relatif terhadap mainFrame
     detailFrame.BackgroundTransparency = 1 -- Menghilangkan latar belakang panel detail
-    detailFrame.BorderSizePixel = 0
+    detailFrame.BorderSizePixel = 0 
     detailFrame.Visible = false
     detailFrame.Parent = gui -- Jadikan elemen mandiri agar bisa digeser terpisah
 
@@ -205,7 +204,7 @@
         label.Text = "⚙️ "..name.." Menu"
         label.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
         label.TextColor3 = Color3.new(1,1,1)
-        label.Font = Enum.Font.SourceSansBold
+        label.Font = Enum.Font.SourceSansBold 
         label.TextSize = 16
         label.Parent = panel
 
@@ -236,7 +235,7 @@
     local playerPanel = createDetailPanel("Lokal Player")
 
     -- Tambahkan UIListLayout ke playerPanel agar semua elemen tersusun otomatis
-    local playerPanelLayout = Instance.new("UIListLayout", playerPanel)
+    local playerPanelLayout = Instance.new("UIListLayout", playerPanel) 
     playerPanelLayout.Padding = UDim.new(0, 5)
     playerPanelLayout.FillDirection = Enum.FillDirection.Vertical
     playerPanelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -257,7 +256,7 @@
         btn.Text = name
         btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
         btn.TextColor3 = Color3.new(1,1,1)
-        btn.Font = Enum.Font.SourceSansBold
+        btn.Font = Enum.Font.SourceSansBold 
         btn.TextSize = 14
         btn.Parent = menuContainer
 
@@ -292,7 +291,7 @@
         end
     end
 
-        -- Headsit: open a separate closeable GUI from the Troll panel
+        -- Headsit: open a separate closeable GUI from the Troll panel 
         do
             local function createHeadsitGui()
                 -- If already exists, do nothing (or recreate)
@@ -303,7 +302,7 @@
                 sg.Name = "HeadsitGui"
                 sg.ResetOnSpawn = false
                 sg.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui
-
+ 
                 local frame = Instance.new("Frame")
                 frame.Size = UDim2.new(0, 320, 0, 180)
                 frame.Position = UDim2.new(0.5, -160, 0.25, 0)
@@ -345,7 +344,7 @@
                 closeBtn.Position = UDim2.new(1, -35, 0, 5)
                 closeBtn.Text = "X"
                 closeBtn.Font = Enum.Font.SourceSansBold
-                closeBtn.TextSize = 16
+                closeBtn.TextSize = 16 
 
                 local searchLabel = Instance.new("TextLabel", frame)
                 searchLabel.Size = UDim2.new(1, -20, 0, 20)
@@ -353,7 +352,7 @@
                 searchLabel.Text = "Cari pemain untuk headsit:"
                 searchLabel.BackgroundTransparency = 1
                 searchLabel.TextColor3 = Color3.new(1,1,1)
-
+ 
                 local searchBox = Instance.new("TextBox", frame)
                 searchBox.Size = UDim2.new(1, -20, 0, 30)
                 searchBox.Position = UDim2.new(0, 10, 0, 35)
@@ -361,7 +360,7 @@
                 searchBox.BackgroundColor3 = Color3.fromRGB(80,80,80)
                 searchBox.TextColor3 = Color3.new(1,1,1)
 
-                local suggestionLabel = Instance.new("TextLabel", frame)
+                local suggestionLabel = Instance.new("TextLabel", frame) 
                 suggestionLabel.Size = UDim2.new(1, -20, 0, 18)
                 suggestionLabel.Position = UDim2.new(0, 10, 0, 70)
                 suggestionLabel.BackgroundTransparency = 1
@@ -369,7 +368,7 @@
                 suggestionLabel.Font = Enum.Font.SourceSansItalic
                 suggestionLabel.TextSize = 12
 
-                local modeLabel = Instance.new("TextLabel", frame)
+                local modeLabel = Instance.new("TextLabel", frame) 
                 modeLabel.Size = UDim2.new(1, -20, 0, 18)
                 modeLabel.Position = UDim2.new(0, 10, 0, 90)
                 modeLabel.BackgroundTransparency = 1
@@ -381,7 +380,7 @@
                 modeToggle.Position = UDim2.new(0, 10, 0, 110)
                 modeToggle.Text = "Switch to Head"
                 modeToggle.BackgroundColor3 = Color3.fromRGB(120,120,120)
-                modeToggle.TextColor3 = Color3.new(1,1,1)
+                modeToggle.TextColor3 = Color3.new(1,1,1) 
                 modeToggle.Font = Enum.Font.SourceSansBold
 
                 local startBtn = Instance.new("TextButton", frame)
@@ -389,7 +388,7 @@
                 startBtn.Position = UDim2.new(0.55, -10, 0, 110)
                 startBtn.Text = "Start"
                 startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
-                startBtn.TextColor3 = Color3.new(1,1,1)
+                startBtn.TextColor3 = Color3.new(1,1,1) 
                 startBtn.Font = Enum.Font.SourceSansBold
 
                 local statusLabel = Instance.new("TextLabel", frame)
@@ -397,7 +396,7 @@
                 statusLabel.Position = UDim2.new(0, 10, 0, 145)
                 statusLabel.Text = "Status: Idle"
                 statusLabel.BackgroundTransparency = 1
-                statusLabel.TextColor3 = Color3.new(1,1,1)
+                statusLabel.TextColor3 = Color3.new(1,1,1) 
 
                 -- Helpers
                 local function findPlayerByName(name)
@@ -511,7 +510,7 @@
             openHeadsitBtn.Position = UDim2.new(0, 10, 0, 35)
             openHeadsitBtn.Text = "Headsit"
             openHeadsitBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
-            openHeadsitBtn.TextColor3 = Color3.new(1,1,1)
+            openHeadsitBtn.TextColor3 = Color3.new(1,1,1) 
             openHeadsitBtn.Font = Enum.Font.SourceSansBold
             openHeadsitBtn.TextSize = 14
             openHeadsitBtn.Parent = trollPanel
@@ -528,93 +527,33 @@
     --------------------------------------------------------------------
     -- AUTO FISHING
     --------------------------------------------------------------------
-    local AutoFishing, autoSell = false, false
+    local AutoFishing = false
+    local autoSell = false
+
+    -- UI isi panel fishing
+    local startBtn = Instance.new("TextButton")
+    startBtn.Size = UDim2.new(1, -20, 0, 35)
+    startBtn.Position = UDim2.new(0, 10, 0, 35)
+    startBtn.Text = "▶ Start"
+    startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+    startBtn.TextColor3 = Color3.new(1,1,1) 
+    startBtn.Font = Enum.Font.SourceSansBold
+    startBtn.TextSize = 16
+    startBtn.Parent = fishingPanel
+
+    local sellBtn = Instance.new("TextButton", fishingPanel)
+    sellBtn.Size = UDim2.new(1, -20, 0, 30)
+    sellBtn.Text = "Auto Sell: OFF"
+    sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    sellBtn.TextColor3 = Color3.new(1,1,1) 
+    sellBtn.Font = Enum.Font.SourceSansBold
+    sellBtn.TextSize = 14
+
     local sellCandidates, sellAttempted = {}, {}
     local sellPatterns = {
         "sell", "sellfish", "sell_fish", "sellall", "sell_all", "sellfish", "sellitems",
         "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
     }
-
-    local function freezeCharacter(freeze)
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = freeze and 0 or 16
-                hum.JumpPower = freeze and 0 or 50
-            end
-        end
-    end
-
-    -- Daftar kata kunci untuk mendeteksi alat pancing
-    local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi"}
-
-    local function findRod()
-        local char = LocalPlayer.Character
-        local function isFishingTool(tool)
-            if tool:IsA("Tool") then
-                local lowerName = tool.Name:lower()
-                -- Check if name contains a rod keyword
-                for _, keyword in ipairs(rodKeywords) do
-                    if lowerName:find(keyword) then return true end
-                end
-                -- Additionally, check for common event folders, indicating it's an interactive tool
-                if tool:FindFirstChild("events") or tool:FindFirstChild("Events") or tool:FindFirstChild("RemoteEvents") then
-                    return true
-                end
-            end
-            return false
-        end
-
-        -- Pertama, cari alat pancing yang sedang dipakai (di dalam Character)
-        if char then
-            for _, tool in ipairs(char:GetChildren()) do
-                if isFishingTool(tool) then return tool end
-            end
-        end
-
-        -- Jika tidak ditemukan, cari di dalam Backpack
-        local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if backpack then
-            for _, tool in ipairs(backpack:GetChildren()) do
-                if isFishingTool(tool) then
-                    -- Alat pancing ditemukan di tas, coba untuk memakainya
-                    if char and char:FindFirstChildOfClass("Humanoid") then
-                        char.Humanoid:EquipTool(tool)
-                        return tool -- Kembalikan tool agar bisa langsung digunakan di frame berikutnya
-                    end
-                end
-            end
-        end
-
-        return nil
-    end
-
-    local function cast()
-        local rod = findRod()
-        if rod and rod:FindFirstChild("events") and rod.events:FindFirstChild("cast") then
-            -- Coba parameter generik terlebih dahulu untuk kompatibilitas
-            pcall(function() rod.events.cast:FireServer(1) end)
-
-            -- Instant cast by firing at the player's position
-            -- LOGIKA INSTANT CAST: Langsung lemparkan umpan ke bawah pemain.
-            -- Ini akan melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                -- Modifikasi: Mengirim posisi tepat di bawah pemain untuk membuat umpan jatuh instan,
-                -- melewati animasi lemparan.
-                pcall(function() rod.events.cast:FireServer(hrp.Position - Vector3.new(0, 5, 0)) end)
-                -- LOGIKA BARU: Langsung tembakkan event 'cast' dengan posisi target.
-                -- Ini adalah metode paling efektif untuk melewati animasi lemparan.
-                -- Posisi target adalah 5 stud di bawah kaki karakter.
-                -- Tentukan posisi target tepat 5 stud di bawah kaki karakter.
-                local targetPosition = hrp.Position - Vector3.new(0, 5, 0)
-                pcall(function() rod.events.cast:FireServer(targetPosition) end)
-                rod.events.cast:FireServer(targetPosition)
-            end
-        end
-    end
 
     local function collectSellCandidates()
         sellCandidates = {}
@@ -632,49 +571,6 @@
                 end
             end
         end
-
-        if #sellCandidates == 0 then
-            for _, child in ipairs(eventsFolder:GetChildren()) do
-                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-                    table.insert(sellCandidates, child)
-                end
-            end
-        end
-    end
-
-    local function tryInvokeCandidate(ev)
-        if not ev then return false end
-        local id = ev:GetFullName()
-        if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
-            return false
-        end
-        sellAttempted[id] = tick()
-
-        local attempts = {}
-        if ev:IsA("RemoteEvent") then
-            attempts = {
-                function() ev:FireServer() end,
-                function() ev:FireServer(true) end,
-                function() ev:FireServer("SellAll") end,
-                function() ev:FireServer("Sell") end,
-                function() ev:FireServer(LocalPlayer) end,
-                function() ev:FireServer(0) end,
-                function() ev:FireServer({}) end,
-            }
-        else -- RemoteFunction
-            attempts = {
-                function() ev:InvokeServer() end,
-                function() ev:InvokeServer(true) end,
-                function() ev:InvokeServer("SellAll") end,
-                function() ev:InvokeServer(LocalPlayer) end,
-                function() ev:InvokeServer({}) end,
-            }
-        end
-
-        for _, fn in ipairs(attempts) do
-            if pcall(fn) then return true end
-        end
-        return false
     end
 
     local function attemptAutoSell()
@@ -683,50 +579,22 @@
         if #sellCandidates == 0 then return false end
 
         for _, ev in ipairs(sellCandidates) do
-            if tryInvokeCandidate(ev) then
-                return true
-            end
+            pcall(function()
+                if ev:IsA("RemoteEvent") then
+                    ev:FireServer("SellAll")
+                elseif ev:IsA("RemoteFunction") then
+                    ev:InvokeServer("SellAll")
+                end
+            end)
         end
-        return false
+        return true
     end
 
-    -- reel / tarik ikan
     local function reel()
-        -- METODE BARU YANG DISEMPURNAKAN: Mencari beberapa kemungkinan event reel secara agresif
-        -- dan memanggilnya untuk mendapatkan reel instan sejati, bahkan sebelum UI muncul.
-        local reelEvents = {}
-        local eventNames = {"reelfinished", "reel", "catch", "finish", "ReelFinished", "CatchFish"}
-
-        -- Cari event di ReplicatedStorage
-        local rsEventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
-        if rsEventsFolder then
-            for _, name in ipairs(eventNames) do
-                local ev = rsEventsFolder:FindFirstChild(name)
-                if ev then table.insert(reelEvents, ev) end
-            end
+        if ReplicatedStorage:FindFirstChild("events") and ReplicatedStorage.events:FindFirstChild("reelfinished") then
+            pcall(function() ReplicatedStorage.events.reelfinished:FireServer(100, true) end)
         end
-
-        -- Cari juga event di dalam tool pancing (fallback)
-        local rod = findRod()
-        local toolEventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
-        if toolEventsFolder then
-            for _, name in ipairs(eventNames) do
-                local ev = toolEventsFolder:FindFirstChild(name)
-                if ev then table.insert(reelEvents, ev) end
-            end
-        end
-
-        if #reelEvents > 0 then
-            -- Coba panggil semua event yang ditemukan dengan beberapa argumen umum
-            for _, reelEvent in ipairs(reelEvents) do
-                pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
-                pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
-                pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
-                pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
-            end
-            attemptAutoSell()
-            return -- Hentikan eksekusi setelah mencoba semua event
-        end
+        attemptAutoSell()
     end
 
     local function enableInstantCatchHook()
@@ -738,170 +606,25 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then
-                        reel()
-                    end
+                    if AutoFishing then task.wait(0.03); reel() end
                 end)
             end
         end
     end
 
-    -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
-    enableInstantCatchHook()
-
-	local utility = {blacklisted_attachments = {"bob", "bodyweld"}}; do 
-		function utility.simulate_click(x, y, mb) 
-			VIM:SendMouseButtonEvent(x, y, (mb - 1), true, game, 1) 
-			VIM:SendMouseButtonEvent(x, y, (mb - 1), false, game, 1) 
-		end 
-
-		function utility.move_fix(bobber) 
-			for index, value in bobber:GetDescendants() do 
-				if (value.ClassName == "Attachment" and table.find(utility.blacklisted_attachments, value.Name)) then 
-					value:Destroy() 
-				end 
-			end 
-		end 
-	end 
-
-	local farm = {reel_tick = nil, cast_tick = nil}; do 
-
-		function farm.freeze_character(freeze) 
-			local character = LocalPlayer.Character 
-			if character then 
-				local humanoid = character:FindFirstChildOfClass("Humanoid") 
-				if humanoid then 
-					if freeze then 
-						humanoid.WalkSpeed = 0 
-						humanoid.JumpPower = 0 
-					else 
-						humanoid.WalkSpeed = 16 -- Default WalkSpeed 
-						humanoid.JumpPower = 50 -- Default JumpPower 
-					end 
-				end 
-			end 
-		end 
-
-		function farm.shake() 
-			local shake_ui = PlayerGui:FindFirstChild("shakeui") 
-			if shake_ui then 
-				local safezone = shake_ui:FindFirstChild("safezone") 
-				local button = safezone and safezone:FindFirstChild("button") 
-
-				if button then 
-					-- Apply big button option from config 
-					if config.enableBigButton then 
-						button.Size = UDim2.new(config.bigButtonScaleFactor, 0, config.bigButtonScaleFactor, 0) 
-					else 
-						button.Size = UDim2.new(1, 0, 1, 0) -- Reset to default size if disabled 
-					end 
-
-					if button.Visible then 
-						utility.simulate_click( 
-							button.AbsolutePosition.X + button.AbsoluteSize.X / 2, 
-							button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 
-							1 
-						) 
-					end 
-				end 
-			end 
-		end 
-	end 
-
-    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
-
-
-
-    -- UI isi panel fishing
-    local startBtn = Instance.new("TextButton")
-    startBtn.Size = UDim2.new(1, -20, 0, 35)
-    startBtn.Position = UDim2.new(0, 10, 0, 35)
-    startBtn.Text = "▶ Start"
-    startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-    startBtn.TextColor3 = Color3.new(1,1,1)
-    startBtn.Font = Enum.Font.SourceSansBold
-    startBtn.TextSize = 16
-    startBtn.Parent = fishingPanel
-
-    local fishingConnection = nil
-    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir
     startBtn.MouseButton1Click:Connect(function()
         AutoFishing = not AutoFishing
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-
-            if fishingConnection and fishingConnection.Connected then fishingConnection:Disconnect() end
-            lastActionTick = 0 -- Reset timer saat dimulai
-
-            -- Use Heartbeat for a more responsive loop to catch UI changes faster, fixing the shake bug.
-            fishingConnection = RunService.Heartbeat:Connect(function()
-                if not AutoFishing then
-                    if fishingConnection and fishingConnection.Connected then
-                        fishingConnection:Disconnect()
-                        fishingConnection = nil
-                    end
-                    freezeCharacter(false)
-                    return
-                end
-
-                local rod = findRod()
-                if rod then
-                    if config.FreezeWhileFishing then freezeCharacter(true) end
-
-                    local reelUI = PlayerGui:FindFirstChild("reel")
-                    local shakeUI = PlayerGui:FindFirstChild("shakeui")
-
-					-- LOGIKA BARU YANG LEBIH STABIL DAN CERDAS
-					-- Jika UI reel atau shake terdeteksi, panggil reel() dan trigger shake bila perlu.
-					if reelUI or shakeUI then
-						lastActionTick = tick()
-						reel()
-						if shakeUI then
-							farm.shake()
-						end
-					else
-                        -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
-                        -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
-                        if tick() - lastActionTick > 0.3 then
-                            cast()
-                        end
-                    end
-                else
-                    freezeCharacter(false)
-                end
-            end)
+            -- Logika auto-fish yang dihapus ada di sini
         else
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            if fishingConnection and fishingConnection.Connected then
-                fishingConnection:Disconnect()
-                fishingConnection = nil
-            end
-            freezeCharacter(false)
+            -- Logika untuk menghentikan auto-fish ada di sini
         end
-    end)
-
-    local sellBtn = Instance.new("TextButton")
-    sellBtn.Size = UDim2.new(1, -20, 0, 30)
-    sellBtn.Position = UDim2.new(0, 10, 0, 75)
-    sellBtn.Text = "Auto Sell: OFF"
-    sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    sellBtn.TextColor3 = Color3.new(1,1,1)
-    sellBtn.Font = Enum.Font.SourceSansBold
-    sellBtn.TextSize = 14
-    sellBtn.Parent = fishingPanel
-
-    sellBtn.MouseButton1Click:Connect(function()
-        autoSell = not autoSell
-        if autoSell then
-            sellBtn.Text = "Auto Sell: ON"
-            sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-            collectSellCandidates()
-        else
-            sellBtn.Text = "Auto Sell: OFF"
-            sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        end
+        startBtn.Text = AutoFishing and "⏸ Stop" or "▶ Start"
+        startBtn.BackgroundColor3 = AutoFishing and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(70, 130, 70)
     end)
 
     --------------------------------------------------------------------
@@ -916,7 +639,7 @@
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    scroll.BorderSizePixel = 0
+    scroll.BorderSizePixel = 0 
     scroll.Parent = teleportPanel
 
     local UIListLayout = Instance.new("UIListLayout", scroll)
@@ -946,7 +669,7 @@
         nameBox.Position = UDim2.new(0, 5, 0, 0)
         nameBox.Text = lokasiData[id].Nama
         nameBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        nameBox.TextColor3 = Color3.new(1,1,1)
+        nameBox.TextColor3 = Color3.new(1,1,1) 
         nameBox.ClearTextOnFocus = false
 
         local tpBtn = Instance.new("TextButton", item)
@@ -983,6 +706,18 @@
         end
     end)
 
+    sellBtn.MouseButton1Click:Connect(function()
+        autoSell = not autoSell
+        if autoSell then
+            sellBtn.Text = "Auto Sell: ON"
+            sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+            collectSellCandidates()
+        else
+            sellBtn.Text = "Auto Sell: OFF"
+            sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end)
+
     -- Save & Load
     local function saveLokasi() gui:SetAttribute("LokasiData", HttpService:JSONEncode(lokasiData)) end
     local function loadLokasi()
@@ -1005,7 +740,7 @@
     local currentWalkSpeed = 16
     local currentJumpPower = 50
     local flyConnection
-    local flyGyro, flyBodyVelocity
+    local flyGyro, flyBodyVelocity 
 
     -- MOBILE FLY CONTROLS (Only created if needed)
     -- Tidak ada lagi GUI tambahan untuk kontrol fly di mobile.
@@ -1022,7 +757,7 @@
         end
 
         local cam = workspace.CurrentCamera
-        local finalMoveVector = Vector3.new(0,0,0)
+        local finalMoveVector = Vector3.new(0,0,0) 
 
         if UIS.TouchEnabled then
             -- KONTROL BARU: Gunakan joystick bawaan untuk semua gerakan
@@ -1031,7 +766,7 @@
             -- It uses the joystick for forward/backward and strafing.
             -- Vertical (up/down) control is not implemented for mobile due to lack of buttons.
             local joystickMove = hum.MoveDirection
-            finalMoveVector = Vector3.new(0,0,0)
+            finalMoveVector = Vector3.new(0,0,0) 
 
             if joystickMove.Magnitude > 0.01 then
                 -- Project the character's movement direction onto the camera's axes
@@ -1040,7 +775,7 @@
 
                 local forwardAmount = -relativeMove.Z
                 local strafeAmount = relativeMove.X
-
+ 
                 -- Combine the movements
                 finalMoveVector = (cam.CFrame.LookVector * forwardAmount) + (cam.CFrame.RightVector * strafeAmount)
             end
@@ -1049,7 +784,7 @@
             if UIS:IsKeyDown(Enum.KeyCode.W) then finalMoveVector = finalMoveVector + cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then finalMoveVector = finalMoveVector - cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then finalMoveVector = finalMoveVector - cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then finalMoveVector = finalMoveVector + cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then finalMoveVector = finalMoveVector + cam.CFrame.RightVector end 
             if UIS:IsKeyDown(Enum.KeyCode.Space) then finalMoveVector = finalMoveVector + Vector3.new(0,1,0) end
             if UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then finalMoveVector = finalMoveVector - Vector3.new(0,1,0) end
         end
@@ -1066,7 +801,7 @@
     function toggleFly(enable) -- Menggunakan deklarasi fungsi yang sudah ada
         isFlying = enable
         local char = LocalPlayer.Character
-        if not char then return end
+        if not char then return end 
 
         local hum = char:FindFirstChildOfClass("Humanoid")
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
@@ -1075,7 +810,7 @@
         if enable then
             if not hum or not torso then isFlying = false; return end
 
-            -- Tidak ada lagi pembuatan GUI untuk mobile
+            -- Tidak ada lagi pembuatan GUI untuk mobile 
 
             if animateScript then animateScript.Disabled = true end
             hum.PlatformStand = true
@@ -1083,7 +818,7 @@
             if not flyGyro or not flyGyro.Parent then
                 flyGyro = Instance.new("BodyGyro", torso)
                 flyGyro.P = 9e4
-                flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9) 
             end
 
             if not flyBodyVelocity or not flyBodyVelocity.Parent then
@@ -1097,7 +832,7 @@
             if flyConnection then flyConnection:Disconnect() end
             flyConnection = RunService.RenderStepped:Connect(flyLoop)
         else
-            -- Tidak ada lagi GUI mobile yang perlu dihancurkan
+            -- Tidak ada lagi GUI mobile yang perlu dihancurkan 
             if animateScript and animateScript.Parent then animateScript.Disabled = false end
             if hum and hum.Parent then hum.PlatformStand = false end
 
@@ -1120,7 +855,7 @@
     flyToggleBtn.Position = UDim2.new(0, 10, 0, 35)
     flyToggleBtn.Text = "✈️ Fly: OFF"
     flyToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    flyToggleBtn.TextColor3 = Color3.new(1,1,1)
+    flyToggleBtn.TextColor3 = Color3.new(1,1,1) 
     flyToggleBtn.Font = Enum.Font.SourceSansBold
     flyToggleBtn.TextSize = 14
 
@@ -1136,7 +871,7 @@
     speedDownBtn.Size = UDim2.new(0.15, 0, 1, 0)
     speedDownBtn.Text = "-"
     speedDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-    speedDownBtn.TextColor3 = Color3.new(1,1,1)
+    speedDownBtn.TextColor3 = Color3.new(1,1,1) 
     speedDownBtn.Font = Enum.Font.SourceSansBold
     speedDownBtn.TextSize = 20
 
@@ -1145,7 +880,7 @@
     speedLabel.Text = "Speed: " .. flySpeed
     speedLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
     speedLabel.TextColor3 = Color3.new(1,1,1)
-    speedLabel.Font = Enum.Font.SourceSans
+    speedLabel.Font = Enum.Font.SourceSans 
     speedLabel.TextSize = 14
 
     local speedUpBtn = Instance.new("TextButton", speedControlFrame)
@@ -1153,7 +888,7 @@
     speedUpBtn.Text = "+"
     speedUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
     speedUpBtn.TextColor3 = Color3.new(1,1,1)
-    speedUpBtn.Font = Enum.Font.SourceSansBold
+    speedUpBtn.Font = Enum.Font.SourceSansBold 
     speedUpBtn.TextSize = 20
 
     local speedBox = Instance.new("TextBox", speedControlFrame)
@@ -1161,7 +896,7 @@
     speedBox.PlaceholderText = "Custom"
     speedBox.Text = ""
     speedBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    speedBox.TextColor3 = Color3.new(1,1,1)
+    speedBox.TextColor3 = Color3.new(1,1,1) 
     speedBox.ClearTextOnFocus = false
     speedBox.Font = Enum.Font.SourceSans
     speedBox.TextSize = 14
@@ -1197,7 +932,7 @@
     noclipToggleBtn.Size = UDim2.new(1, -20, 0, 30)
     noclipToggleBtn.Text = "🧱 Noclip: OFF"
     noclipToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    noclipToggleBtn.TextColor3 = Color3.new(1,1,1)
+    noclipToggleBtn.TextColor3 = Color3.new(1,1,1) 
     noclipToggleBtn.Font = Enum.Font.SourceSansBold
     noclipToggleBtn.TextSize = 14
     noclipToggleBtn.Parent = playerPanel
@@ -1226,16 +961,16 @@
     wsListLayout.Padding = UDim.new(0, 5)
 
     local wsDownBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0); wsDownBtn.Text = "-"; wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); wsDownBtn.TextColor3 = Color3.new(1,1,1); wsDownBtn.Font = Enum.Font.SourceSansBold; wsDownBtn.TextSize = 20
+    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0); wsDownBtn.Text = "-"; wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); wsDownBtn.TextColor3 = Color3.new(1,1,1); wsDownBtn.Font = Enum.Font.SourceSansBold; wsDownBtn.TextSize = 20 
 
     local wsLabel = Instance.new("TextLabel", walkSpeedControlFrame)
-    wsLabel.Size = UDim2.new(0.4, -5, 1, 0); wsLabel.Text = "Speed: " .. currentWalkSpeed; wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsLabel.TextColor3 = Color3.new(1,1,1); wsLabel.Font = Enum.Font.SourceSans; wsLabel.TextSize = 14
+    wsLabel.Size = UDim2.new(0.4, -5, 1, 0); wsLabel.Text = "Speed: " .. currentWalkSpeed; wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsLabel.TextColor3 = Color3.new(1,1,1); wsLabel.Font = Enum.Font.SourceSans; wsLabel.TextSize = 14 
 
     local wsUpBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0); wsUpBtn.Text = "+"; wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); wsUpBtn.TextColor3 = Color3.new(1,1,1); wsUpBtn.Font = Enum.Font.SourceSansBold; wsUpBtn.TextSize = 20
+    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0); wsUpBtn.Text = "+"; wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); wsUpBtn.TextColor3 = Color3.new(1,1,1); wsUpBtn.Font = Enum.Font.SourceSansBold; wsUpBtn.TextSize = 20 
 
     local wsBox = Instance.new("TextBox", walkSpeedControlFrame)
-    wsBox.Size = UDim2.new(0.3, -10, 1, 0); wsBox.PlaceholderText = "Custom"; wsBox.Text = ""; wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsBox.TextColor3 = Color3.new(1,1,1); wsBox.ClearTextOnFocus = false; wsBox.Font = Enum.Font.SourceSans; wsBox.TextSize = 14
+    wsBox.Size = UDim2.new(0.3, -10, 1, 0); wsBox.PlaceholderText = "Custom"; wsBox.Text = ""; wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsBox.TextColor3 = Color3.new(1,1,1); wsBox.ClearTextOnFocus = false; wsBox.Font = Enum.Font.SourceSans; wsBox.TextSize = 14 
 
     local function updateWalkSpeedDisplay() wsLabel.Text = "Speed: " .. currentWalkSpeed end
     wsDownBtn.MouseButton1Click:Connect(function() currentWalkSpeed = math.max(0, currentWalkSpeed - 5) updateWalkSpeedDisplay() applyCharacterProperties() end)
@@ -1252,16 +987,16 @@
     jpListLayout.Padding = UDim.new(0, 5)
 
     local jpDownBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0); jpDownBtn.Text = "-"; jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); jpDownBtn.TextColor3 = Color3.new(1,1,1); jpDownBtn.Font = Enum.Font.SourceSansBold; jpDownBtn.TextSize = 20
+    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0); jpDownBtn.Text = "-"; jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); jpDownBtn.TextColor3 = Color3.new(1,1,1); jpDownBtn.Font = Enum.Font.SourceSansBold; jpDownBtn.TextSize = 20 
 
     local jpLabel = Instance.new("TextLabel", jumpPowerControlFrame)
-    jpLabel.Size = UDim2.new(0.4, -5, 1, 0); jpLabel.Text = "Jump: " .. currentJumpPower; jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpLabel.TextColor3 = Color3.new(1,1,1); jpLabel.Font = Enum.Font.SourceSans; jpLabel.TextSize = 14
+    jpLabel.Size = UDim2.new(0.4, -5, 1, 0); jpLabel.Text = "Jump: " .. currentJumpPower; jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpLabel.TextColor3 = Color3.new(1,1,1); jpLabel.Font = Enum.Font.SourceSans; jpLabel.TextSize = 14 
 
     local jpUpBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0); jpUpBtn.Text = "+"; jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); jpUpBtn.TextColor3 = Color3.new(1,1,1); jpUpBtn.Font = Enum.Font.SourceSansBold; jpUpBtn.TextSize = 20
+    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0); jpUpBtn.Text = "+"; jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); jpUpBtn.TextColor3 = Color3.new(1,1,1); jpUpBtn.Font = Enum.Font.SourceSansBold; jpUpBtn.TextSize = 20 
 
     local jpBox = Instance.new("TextBox", jumpPowerControlFrame)
-    jpBox.Size = UDim2.new(0.3, -10, 1, 0); jpBox.PlaceholderText = "Custom"; jpBox.Text = ""; jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpBox.TextColor3 = Color3.new(1,1,1); jpBox.ClearTextOnFocus = false; jpBox.Font = Enum.Font.SourceSans; jpBox.TextSize = 14
+    jpBox.Size = UDim2.new(0.3, -10, 1, 0); jpBox.PlaceholderText = "Custom"; jpBox.Text = ""; jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpBox.TextColor3 = Color3.new(1,1,1); jpBox.ClearTextOnFocus = false; jpBox.Font = Enum.Font.SourceSans; jpBox.TextSize = 14 
 
     local function updateJumpPowerDisplay() jpLabel.Text = "Jump: " .. currentJumpPower end
     jpDownBtn.MouseButton1Click:Connect(function() currentJumpPower = math.max(0, currentJumpPower - 10) updateJumpPowerDisplay() applyCharacterProperties() end)
@@ -1298,7 +1033,7 @@
     infiniteJumpToggleBtn.Size = UDim2.new(1, -20, 0, 30)
     infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
     infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100); infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1); infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold; infiniteJumpToggleBtn.TextSize = 14
-
+ 
     infiniteJumpToggleBtn.MouseButton1Click:Connect(function() isInfiniteJumpEnabled = not isInfiniteJumpEnabled toggleInfiniteJump(isInfiniteJumpEnabled) if isInfiniteJumpEnabled then infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end end)
 
     -- Camera Distance UI (Set Jarak)
@@ -1307,13 +1042,13 @@
     camDistControlFrame.BackgroundTransparency = 1
 
     local cdListLayout = Instance.new("UIListLayout", camDistControlFrame); cdListLayout.FillDirection = Enum.FillDirection.Horizontal; cdListLayout.Padding = UDim.new(0, 5); cdListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-    local cdLabel = Instance.new("TextLabel", camDistControlFrame); cdLabel.Size = UDim2.new(0.4, -5, 1, 0); cdLabel.Text = "Set Distance:"; cdLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdLabel.TextColor3 = Color3.new(1,1,1); cdLabel.Font = Enum.Font.SourceSans; cdLabel.TextSize = 14
+ 
+    local cdLabel = Instance.new("TextLabel", camDistControlFrame); cdLabel.Size = UDim2.new(0.4, -5, 1, 0); cdLabel.Text = "Set Distance:"; cdLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdLabel.TextColor3 = Color3.new(1,1,1); cdLabel.Font = Enum.Font.SourceSans; cdLabel.TextSize = 14 
 
     local cdBox = Instance.new("TextBox", camDistControlFrame)
-    cdBox.Size = UDim2.new(0.4, -10, 1, 0); cdBox.PlaceholderText = "Jarak"; cdBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdBox.TextColor3 = Color3.new(1,1,1); cdBox.ClearTextOnFocus = false; cdBox.Font = Enum.Font.SourceSans; cdBox.TextSize = 14
+    cdBox.Size = UDim2.new(0.4, -10, 1, 0); cdBox.PlaceholderText = "Jarak"; cdBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdBox.TextColor3 = Color3.new(1,1,1); cdBox.ClearTextOnFocus = false; cdBox.Font = Enum.Font.SourceSans; cdBox.TextSize = 14 
 
-    local cdSetBtn = Instance.new("TextButton", camDistControlFrame)
+    local cdSetBtn = Instance.new("TextButton", camDistControlFrame) 
     cdSetBtn.Size = UDim2.new(0.2, 0, 1, 0); cdSetBtn.Text = "Set"; cdSetBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180); cdSetBtn.TextColor3 = Color3.new(1,1,1); cdSetBtn.Font = Enum.Font.SourceSansBold; cdSetBtn.TextSize = 14
 
     cdSetBtn.MouseButton1Click:Connect(function()
@@ -1339,7 +1074,7 @@
     povToggleBtn.Size = UDim2.new(1, -20, 0, 30)
     povToggleBtn.Text = "Enable POV Zoom: OFF"
     povToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    povToggleBtn.TextColor3 = Color3.new(1,1,1)
+    povToggleBtn.TextColor3 = Color3.new(1,1,1) 
     povToggleBtn.Font = Enum.Font.SourceSansBold
     povToggleBtn.TextSize = 14
 
@@ -1366,7 +1101,7 @@
         local hum = c:FindFirstChildOfClass("Humanoid") or c:WaitForChild("Humanoid", 5)
         local hrp = c:FindFirstChild("HumanoidRootPart") or c:WaitForChild("HumanoidRootPart", 5)
 
-        -- Apply settings once ready
+        -- Apply settings once ready 
         if isFlying then toggleFly(true) end
         applyCharacterProperties()
         if isInfiniteJumpEnabled then toggleInfiniteJump(true) end -- Re-apply infinite jump on respawn
@@ -1421,7 +1156,7 @@
                 local data = HttpService:JSONDecode(response)
 
                 local candidates = {}
-                if data and data.data then
+                if data and data.data then 
                     for _, server in ipairs(data.data) do
                         local sid = server.id or server.id
                         -- Ensure sid exists and is not the current JobId
@@ -2102,7 +1837,6 @@
         if AutoFishing then
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            freezeCharacter(false)
         end
 
         -- Stop Flying
@@ -2240,7 +1974,6 @@
                     config.fpsCap = decodedSettings.fpsCap or config.fpsCap
                     pcall(function() setfpscap(config.fpsCap) end)
                     config.FreezeWhileFishing = decodedSettings.freezeWhileFishing ~= nil and decodedSettings.freezeWhileFishing or config.FreezeWhileFishing
-                    autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell
                     flySpeed = decodedSettings.flySpeed or flySpeed
                     currentWalkSpeed = decodedSettings.walkSpeed or currentWalkSpeed
                     currentJumpPower = decodedSettings.jumpPower or currentJumpPower
@@ -2275,10 +2008,10 @@
     -- Muat posisi GUI saat skrip dimulai
     loadGuiPosition()
     loadLokasi() -- Panggil loadLokasi setelah GUI diparent dan atribut dimuat
+    enableInstantCatchHook() -- Aktifkan hook untuk instant reel
 
     -- Perbarui teks tombol dan label yang bergantung pada state yang dimuat
     freezeToggle.Text = "Freeze While Fishing: " .. (config.FreezeWhileFishing and "ON" or "OFF")
-    sellBtn.Text = "Auto Sell: " .. (autoSell and "ON" or "OFF")
     espToggleBtn.Text = "ESP: " .. (isEspEnabled and "ON" or "OFF")
     toggleSpectateBtn.Text = "Spectate: " .. (spectating and "ON" or "OFF")
 
