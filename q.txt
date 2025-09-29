@@ -1,3 +1,6 @@
+    --// GUI Menu 2x2 + Panel Detail + Auto Fishing + Auto Sell + Teleport Manager
+    --// Clean Rewrite Version
+
     -- SERVICES
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
@@ -14,7 +17,7 @@
     local config = {
         fpsCap = 9999, -- Default FPS cap
         FreezeWhileFishing = true,
-        ShakeAlwaysCenter = true,
+        ShakeAlwaysCenter = true, -- Keep this as it's used
         ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
     }
     pcall(function() setfpscap(config.fpsCap) end)
@@ -744,6 +747,10 @@
     -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
+	-- Configuration variables
+	local shakeSpeed = 0.05 -- Lower value means faster shake (e.g., 0.05 for fast, 0.1 for normal)
+
+
     local function shake()
 		-- Cari root UI untuk shake secara lebih robust (nama mengandung "shake")
 		local shake_ui = PlayerGui:FindFirstChild("shakeui")
@@ -769,47 +776,28 @@
 				end
 			end
 			if button and button.Visible then
-                if config.ShakeAlwaysCenter then
-                    local size = config.ShakeButtonSize
-                    button.Size = UDim2.new(0, size, 0, size)
-                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-                end
-                -- Logika klik yang disempurnakan untuk PC dan Mobile
+				if config.ShakeAlwaysCenter then
+					local size = config.ShakeButtonSize
+					button.Size = UDim2.new(0, size, 0, size)
+					button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+				end
+				-- Logika klik yang disempurnakan untuk PC dan Mobile
 				local x = math.floor(button.AbsolutePosition.X + button.AbsoluteSize.X/2)
 				local y = math.floor(button.AbsolutePosition.Y + button.AbsoluteSize.Y/2)
-				if UIS.TouchEnabled then
-					-- Untuk Mobile: coba beberapa metode input agar kompatibel di berbagai executor
-					local canSendTouch = typeof(VIM.SendTouchEvent) == "function"
-					local canSendPointer = typeof(VIM.SendPointerEvent) == "function"
-					task.spawn(function()
-						for i = 1, 200 do
-							if canSendTouch then
-								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, true, game) end)
-								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, false, game) end)
-							elseif canSendPointer then
-								pcall(function() VIM:SendPointerEvent(x, y, Enum.PointerAction.Press, true, game) end)
-								pcall(function() VIM:SendPointerEvent(x, y, Enum.PointerAction.Release, true, game) end)
-							else
-								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, true, game, 1) end)
-								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, false, game, 1) end)
-							end
-							if i % 20 == 0 then task.wait() end
-						end
-					end)
-				else
-                    -- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
-                    -- Menaikkan jumlah klik untuk mempercepat shake
-					for i = 1, 200 do
-						VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-						VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-						if i % 20 == 0 then task.wait() end
-                    end
-                end
-            end
-        end
+
+				-- Simulate click for both PC and Mobile
+				-- The number of clicks and delay can be adjusted for effectiveness
+				for i = 1, 5 do -- Perform multiple clicks to ensure it registers
+					VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+					VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+					task.wait(shakeSpeed) -- Small delay between clicks
+				end
+			end
+		end
     end
 
     -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
+
 
 
 
