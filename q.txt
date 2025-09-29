@@ -14,12 +14,14 @@
     local VIM = game:GetService("VirtualInputManager")
 
     -- CONFIG
-    local config = {
-        fpsCap = 9999, -- Default FPS cap
-        FreezeWhileFishing = true,
-        ShakeAlwaysCenter = true, -- Keep this as it's used
-        ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
-    }
+    local config = { 
+        fpsCap = 9999, 
+        disableChat = true, -- Set to true to hide the chat 
+        enableBigButton = true, -- Set to true to enlarge the button in the shake UI 
+        bigButtonScaleFactor = 2, -- Scale factor for big button size 
+        shakeSpeed = 0.05, -- Lower value means faster shake (e.g., 0.05 for fast, 0.1 for normal) 
+        FreezeWhileFishing = true -- Set to true to freeze your character while fishing 
+    } 
     pcall(function() setfpscap(config.fpsCap) end)
 
     -- Disable chat if configured
@@ -747,57 +749,66 @@
     -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
-	-- Configuration variables
-	local shakeSpeed = 0.05 -- Lower value means faster shake (e.g., 0.05 for fast, 0.1 for normal)
+	local utility = {blacklisted_attachments = {"bob", "bodyweld"}}; do 
+		function utility.simulate_click(x, y, mb) 
+			VIM:SendMouseButtonEvent(x, y, (mb - 1), true, game, 1) 
+			VIM:SendMouseButtonEvent(x, y, (mb - 1), false, game, 1) 
+		end 
 
+		function utility.move_fix(bobber) 
+			for index, value in bobber:GetDescendants() do 
+				if (value.ClassName == "Attachment" and table.find(utility.blacklisted_attachments, value.Name)) then 
+					value:Destroy() 
+				end 
+			end 
+		end 
+	end 
 
-    local function shake()
-		-- Cari root UI untuk shake secara lebih robust (nama mengandung "shake")
-		local shake_ui = PlayerGui:FindFirstChild("shakeui")
-		if not shake_ui then
-			for _, d in ipairs(PlayerGui:GetChildren()) do
-				if typeof(d.Name) == "string" and d.Name:lower():find("shake") then
-					shake_ui = d
-					break
-				end
-			end
-		end
+	local farm = {reel_tick = nil, cast_tick = nil}; do 
 
-		if shake_ui then
-			local safezone = shake_ui:FindFirstChild("safezone")
-			local button = safezone and safezone:FindFirstChild("button")
-			-- Jika struktur berbeda, cari tombol pertama yang terlihat di bawah shake_ui
-			if not (button and button.Visible) then
-				for _, d in ipairs(shake_ui:GetDescendants()) do
-					if (d:IsA("ImageButton") or d:IsA("TextButton")) and d.Visible then
-						button = d
-						break
-					end
-				end
-			end
-			if button and button.Visible then
-				if config.ShakeAlwaysCenter then
-					local size = config.ShakeButtonSize
-					button.Size = UDim2.new(0, size, 0, size)
-					button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-				end
-				-- Logika klik yang disempurnakan untuk PC dan Mobile
-				local x = math.floor(button.AbsolutePosition.X + button.AbsoluteSize.X/2)
-				local y = math.floor(button.AbsolutePosition.Y + button.AbsoluteSize.Y/2)
+		function farm.freeze_character(freeze) 
+			local character = LocalPlayer.Character 
+			if character then 
+				local humanoid = character:FindFirstChildOfClass("Humanoid") 
+				if humanoid then 
+					if freeze then 
+						humanoid.WalkSpeed = 0 
+						humanoid.JumpPower = 0 
+					else 
+						humanoid.WalkSpeed = 16 -- Default WalkSpeed 
+						humanoid.JumpPower = 50 -- Default JumpPower 
+					end 
+				end 
+			end 
+		end 
 
-				-- Simulate click for both PC and Mobile
-				-- The number of clicks and delay can be adjusted for effectiveness
-				for i = 1, 5 do -- Perform multiple clicks to ensure it registers
-					VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-					VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-					task.wait(shakeSpeed) -- Small delay between clicks
-				end
-			end
-		end
-    end
+		function farm.shake() 
+			local shake_ui = PlayerGui:FindFirstChild("shakeui") 
+			if shake_ui then 
+				local safezone = shake_ui:FindFirstChild("safezone") 
+				local button = safezone and safezone:FindFirstChild("button") 
+
+				if button then 
+					-- Apply big button option from config 
+					if config.enableBigButton then 
+						button.Size = UDim2.new(config.bigButtonScaleFactor, 0, config.bigButtonScaleFactor, 0) 
+					else 
+						button.Size = UDim2.new(1, 0, 1, 0) -- Reset to default size if disabled 
+					end 
+
+					if button.Visible then 
+						utility.simulate_click( 
+							button.AbsolutePosition.X + button.AbsoluteSize.X / 2, 
+							button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 
+							1 
+						) 
+					end 
+				end 
+			end 
+		end 
+	end 
 
     -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
-
 
 
 
@@ -847,7 +858,7 @@
 						lastActionTick = tick()
 						reel()
 						if shakeUI then
-							shake()
+							farm.shake()
 						end
 					else
                         -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
