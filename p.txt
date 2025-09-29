@@ -1,443 +1,2432 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Dbyanggara/0101/main/o.txt", true))()
+    --// GUI Menu 2x2 + Panel Detail + Auto Fishing + Auto Sell + Teleport Manager
+    --// Clean Rewrite Version
 
-local http = cloneref(game:GetService("HttpService"))
+    -- SERVICES
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local StarterGui = game:GetService("StarterGui")
+    local RunService = game:GetService("RunService")
+    local HttpService = game:GetService("HttpService")
+    local Camera = workspace.CurrentCamera
+    local UIS = game:GetService("UserInputService")
+    local VIM = game:GetService("VirtualInputManager")
 
-local succ, result = pcall(function()
-	return http:JSONDecode(game:HttpGet("https://raw.githubusercontent.com/SPDM-Team/Arceus-X-NEO-public/main/bannedusers"))
-end)
+    -- CONFIG
+    local config = {
+        fpsCap = 9999, -- Default FPS cap
+        FreezeWhileFishing = true,
+        ShakeAlwaysCenter = true,
+        ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
+    }
+    pcall(function() setfpscap(config.fpsCap) end)
 
-if succ and result[gethwid()] then
-	-- Gui to Lua
-	-- Version: 3.2 - Exp
+    -- Disable chat if configured
+    if config.disableChat then
+        pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
+    end
 
-	-- Instances:
+    --------------------------------------------------------------------
+    -- GUI UTAMA
+    --------------------------------------------------------------------
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "MainGui"
+    gui.ResetOnSpawn = false
+    gui.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui agar tidak hilang
 
-	local BanCheck = {
-		BanCheck = Instance.new("ScreenGui"),
-		BanScreen = Instance.new("Frame"),
-		UIPadding = Instance.new("UIPadding"),
-		PopupTitle = Instance.new("TextLabel"),
-		PopupTitle_2 = Instance.new("TextLabel"),
-		PopupTitle_3 = Instance.new("TextLabel"),
-		RedSeparator = Instance.new("Frame"),
-		MainWindow_UICorner = Instance.new("UICorner"),
-		PopupTitle_4 = Instance.new("TextLabel"),
-		KeySystem_AppLogo = Instance.new("ImageLabel"),
-		UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint"),
-		PopupTitle_5 = Instance.new("TextLabel"),
-		PopupTitle_6 = Instance.new("TextLabel"),
-		Logo = Instance.new("ImageLabel"),
-		BanScreen_CopyLinkButton = Instance.new("ImageButton"),
-		UIGradient = Instance.new("UIGradient"),
-		UIAspectRatioConstraint_3 = Instance.new("UIAspectRatioConstraint"),
-		BanServerInvite = Instance.new("TextLabel"),
-		PopupTitle_7 = Instance.new("TextLabel"),
-		BanScreen_ExitButton = Instance.new("TextButton"),
-		UICorner = Instance.new("UICorner"),
-		UIPadding_2 = Instance.new("UIPadding"),
-		HWID = Instance.new("TextLabel"),
-		HWID_copy = Instance.new("ImageButton"),
-		BanScreen_Unban = Instance.new("TextButton"),
-	}
+    -- Kotak Menu Utama
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 200, 0, 30) -- Diperkecil saat awal
+    mainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Parent = gui
 
-	-- Gui custom functions:
+    -- Kontainer untuk tombol-tombol menu
+    local menuContainer = Instance.new("ScrollingFrame")
+    menuContainer.Name = "MenuContainer"
+    menuContainer.Size = UDim2.new(1, 0, 1, -30)
+    menuContainer.Position = UDim2.new(0, 0, 0, 30)
+    menuContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    menuContainer.Visible = false -- Sembunyi saat awal
+    menuContainer.BorderSizePixel = 0
+    menuContainer.ScrollBarThickness = 6
+    menuContainer.Parent = mainFrame
 
-	local loadImage = nil
-	local function randString(len)
-		local chars = {}
-		for i = 1, len or math.random(16, 32) do
-			chars[i] = string.char(math.random(33, 230))
-		end
-		return table.concat(chars)
-	end
+    -- Tombol Toggle (menggantikan tombol close)
+    local isMenuExpanded = false
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleButton"
+    toggleBtn.Size = UDim2.new(1, -45, 0, 20) -- Diperkecil untuk memberi ruang tombol close
+    toggleBtn.Position = UDim2.new(0, 5, 0, 5)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+    toggleBtn.Font = Enum.Font.SourceSansBold
+    toggleBtn.Text = "☰ Buka Menu"
+    toggleBtn.TextSize = 14
+    toggleBtn.Parent = mainFrame
 
-	-- ================================================== 
-	--					LIBRARIES HERE
-	-- ==================================================
+    -- Tombol Close GUI
+    local closeGuiBtn = Instance.new("TextButton")
+    closeGuiBtn.Name = "CloseGuiButton"
+    closeGuiBtn.Size = UDim2.new(0, 30, 0, 20)
+    closeGuiBtn.Position = UDim2.new(1, -35, 0, 5) -- Posisi di ujung kanan
+    closeGuiBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    closeGuiBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeGuiBtn.Font = Enum.Font.SourceSansBold
+    closeGuiBtn.Text = "X"
+    closeGuiBtn.TextSize = 16
+    closeGuiBtn.Parent = mainFrame
 
-	local function duplicate(obj)
-		obj = obj:Clone()
-		obj:ClearAllChildren()
+    toggleBtn.MouseButton1Click:Connect(function()
+        isMenuExpanded = not isMenuExpanded -- Balik status menu
 
-		return obj
-	end
+        if isMenuExpanded then -- Logika saat menu DIBUKA (Membesar)
+            menuContainer.Visible = true
 
-	loadImage = function(robloxUrl, customUrl)
-		--if not isStudio and customUrl then
-		--	local splitted = customUrl:split("/")
-		--	local imageName = splitted[#splitted]
+            -- Tentukan tinggi tetap untuk menampilkan ~3 tombol agar ada petunjuk bisa di-scroll
+            local buttonHeight = 35 -- Sesuai createMenuButton
+            local listPadding = 5   -- Sesuai listLayout.Padding
+            -- Tinggi untuk 3 tombol penuh + sedikit dari tombol ke-4 sebagai petunjuk
+            local visibleAreaHeight = (buttonHeight * 3) + (listPadding * 3) + 10
 
-		--	return storage.saveAssetFromUrl(storage.data.types.Gui, imageName, customUrl, true)
-		--end
+            local topBarHeight = 30
+            local targetHeight = topBarHeight + visibleAreaHeight
 
-		return robloxUrl
-	end
+            mainFrame:TweenSize(UDim2.new(0, 200, 0, targetHeight), "Out", "Quad", 0.2, true)
+            toggleBtn.Text = "✖ Tutup Menu"
+        else -- Logika saat menu DITUTUP (Mengecil)
+            menuContainer.Visible = false
+            detailFrame.Visible = false -- Pastikan panel detail juga tertutup
+            mainFrame:TweenSize(UDim2.new(0, 200, 0, 30), "Out", "Quad", 0.2, true)
+            toggleBtn.Text = "☰ Buka Menu"
+        end
+    end)
 
-	-- Properties:
+    --------------------------------------------------------------------
+    -- HELPER: Draggable GUI
+    --------------------------------------------------------------------
+    local function makeDraggable(guiElement, frameToDrag)
+        local dragging, dragInput, dragStart, startPos
+        guiElement.Active = true
 
-	BanCheck.BanCheck.Name = randString()
-	BanCheck.BanCheck.IgnoreGuiInset = true
-	BanCheck.BanCheck.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	BanCheck.BanCheck.ResetOnSpawn = false
+        guiElement.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = frameToDrag.Position
 
-	BanCheck.BanScreen.Name = randString()
-	BanCheck.BanScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanScreen.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanScreen.BorderSizePixel = 0
-	BanCheck.BanScreen.Size = UDim2.new(1, 0, 1, 0)
+                local conn
+                conn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        conn:Disconnect()
+                    end
+                end)
+            end
+        end)
 
-	BanCheck.UIPadding.Name = randString()
-	BanCheck.UIPadding.PaddingBottom = UDim.new(0.1, 0)
-	BanCheck.UIPadding.PaddingLeft = UDim.new(0.05, 0)
-	BanCheck.UIPadding.PaddingRight = UDim.new(0.05, 0)
-	BanCheck.UIPadding.PaddingTop = UDim.new(0.1, 0)
+        guiElement.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
 
-	BanCheck.PopupTitle.Name = randString()
-	BanCheck.PopupTitle.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle.BackgroundTransparency = 1
-	BanCheck.PopupTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle.BorderSizePixel = 0
-	BanCheck.PopupTitle.Position = UDim2.new(0.503, 0, 0.266, 0)
-	BanCheck.PopupTitle.Size = UDim2.new(0.8, 0, 0.107, 0)
-	BanCheck.PopupTitle.ZIndex = 5
-	BanCheck.PopupTitle.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle.Text = "YOU'VE BEEN BANNED"
-	BanCheck.PopupTitle.TextColor3 = Color3.fromRGB(226, 0, 0)
-	BanCheck.PopupTitle.TextScaled = true
-	BanCheck.PopupTitle.TextSize = 14
-	BanCheck.PopupTitle.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle.TextWrapped = true
+        UIS.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                frameToDrag.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end)
+    end
 
-	BanCheck.PopupTitle_2.Name = randString()
-	BanCheck.PopupTitle_2.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_2.BackgroundTransparency = 1
-	BanCheck.PopupTitle_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_2.BorderSizePixel = 0
-	BanCheck.PopupTitle_2.Position = UDim2.new(0.5, 0, 0.433, 0)
-	BanCheck.PopupTitle_2.Size = UDim2.new(0.55, 0, 0.126, 0)
-	BanCheck.PopupTitle_2.ZIndex = 5
-	BanCheck.PopupTitle_2.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_2.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_2.Text = "Your device has been banned from all SPDM Team's softwares for rule violation. For support, visit:"
-	BanCheck.PopupTitle_2.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_2.TextScaled = true
-	BanCheck.PopupTitle_2.TextSize = 14
-	BanCheck.PopupTitle_2.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_2.TextTransparency = 0.1
-	BanCheck.PopupTitle_2.TextWrapped = true
-	BanCheck.PopupTitle_2.TextYAlignment = Enum.TextYAlignment.Top
+    -- Jadikan title bar menu utama bisa digeser
+    makeDraggable(mainFrame, mainFrame)
 
-	BanCheck.PopupTitle_3.Name = randString()
-	BanCheck.PopupTitle_3.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle_3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_3.BackgroundTransparency = 1
-	BanCheck.PopupTitle_3.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_3.BorderSizePixel = 0
-	BanCheck.PopupTitle_3.Position = UDim2.new(0.181, 0, 0.031, 0)
-	BanCheck.PopupTitle_3.Size = UDim2.new(0.215, 0, 0.078, 0)
-	BanCheck.PopupTitle_3.ZIndex = 5
-	BanCheck.PopupTitle_3.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_3.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_3.Text = "SPDM Team"
-	BanCheck.PopupTitle_3.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_3.TextScaled = true
-	BanCheck.PopupTitle_3.TextSize = 14
-	BanCheck.PopupTitle_3.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_3.TextWrapped = true
-	BanCheck.PopupTitle_3.TextXAlignment = Enum.TextXAlignment.Left
+    -- List Layout (menggantikan Grid agar lebih fleksibel dan bisa menyesuaikan)
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.FillDirection = Enum.FillDirection.Vertical
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Parent = menuContainer
 
-	BanCheck.RedSeparator.Name = randString()
-	BanCheck.RedSeparator.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.RedSeparator.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	BanCheck.RedSeparator.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.RedSeparator.BorderSizePixel = 0
-	BanCheck.RedSeparator.Position = UDim2.new(0.5, 0, 0.405, 0)
-	BanCheck.RedSeparator.Size = UDim2.new(0.075, 0, 0.015, 0)
-	BanCheck.RedSeparator.ZIndex = 5
+    -- Panel Detail
+    local detailFrame = Instance.new("Frame")
+    detailFrame.Size = UDim2.new(0, 250, 0, 200)
+    detailFrame.Position = UDim2.new(1, 10, 0, 0) -- Posisi di sebelah kanan menu utama, relatif terhadap mainFrame
+    detailFrame.BackgroundTransparency = 1 -- Menghilangkan latar belakang panel detail
+    detailFrame.BorderSizePixel = 0
+    detailFrame.Visible = false
+    detailFrame.Parent = gui -- Jadikan elemen mandiri agar bisa digeser terpisah
 
-	BanCheck.MainWindow_UICorner.CornerRadius = UDim.new(1, 0)
-	BanCheck.MainWindow_UICorner.Name = randString()
+    -- Tombol Close
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(1, 0, 0, 30)
+    closeBtn.Text = "✖ Close"
+    closeBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    closeBtn.TextColor3 = Color3.new(1,1,1)
+    closeBtn.Font = Enum.Font.SourceSansBold
+    closeBtn.TextSize = 16
+    closeBtn.Parent = detailFrame
 
-	BanCheck.PopupTitle_4.Name = randString()
-	BanCheck.PopupTitle_4.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle_4.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_4.BackgroundTransparency = 1
-	BanCheck.PopupTitle_4.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_4.BorderSizePixel = 0
-	BanCheck.PopupTitle_4.Position = UDim2.new(0.138, 0, -0.007, 0)
-	BanCheck.PopupTitle_4.Size = UDim2.new(0.129, 0, 0.048, 0)
-	BanCheck.PopupTitle_4.ZIndex = 5
-	BanCheck.PopupTitle_4.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_4.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_4.Text = "Powered by:"
-	BanCheck.PopupTitle_4.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_4.TextScaled = true
-	BanCheck.PopupTitle_4.TextSize = 14
-	BanCheck.PopupTitle_4.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_4.TextTransparency = 0.2
-	BanCheck.PopupTitle_4.TextWrapped = true
-	BanCheck.PopupTitle_4.TextXAlignment = Enum.TextXAlignment.Left
+    closeBtn.MouseButton1Click:Connect(function()
+        -- Sembunyikan panel detail.
+        detailFrame.Visible = false
+        -- Tutup juga menu utama untuk menyamakan state dan memperbaiki teks tombol yang 'stuck'.
+        isMenuExpanded = false
+        menuContainer.Visible = false
+        mainFrame:TweenSize(UDim2.new(0, 200, 0, 30), "Out", "Quad", 0.2, true)
+        toggleBtn.Text = "☰ Buka Menu"
+    end)
 
-	BanCheck.KeySystem_AppLogo.Name = randString()
-	BanCheck.KeySystem_AppLogo.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.KeySystem_AppLogo.BackgroundTransparency = 1
-	BanCheck.KeySystem_AppLogo.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.KeySystem_AppLogo.BorderSizePixel = 0
-	BanCheck.KeySystem_AppLogo.Position = UDim2.new(0.932, 0, -0.008, 0)
-	BanCheck.KeySystem_AppLogo.Size = UDim2.new(0.07, 0, 0.165, 0)
-	BanCheck.KeySystem_AppLogo.ZIndex = 5
-	BanCheck.KeySystem_AppLogo.Image = loadImage("rbxassetid://14926240421", "")
-	BanCheck.KeySystem_AppLogo.ScaleType = Enum.ScaleType.Fit
+    --------------------------------------------------------------------
+    -- HELPER: Buat Panel Isi
+    --------------------------------------------------------------------
+    local function createDetailPanel(name)
+        local panel = Instance.new("ScrollingFrame") -- Ubah menjadi ScrollingFrame
+        panel.Name = name .. "Panel"
+        panel.Size = UDim2.new(1, 0, 1, -30)
+        panel.Position = UDim2.new(0, 0, 0, 30)
+        panel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        panel.Visible = false
+        panel.Parent = detailFrame
+        panel.ScrollBarThickness = 6
 
-	BanCheck.UIAspectRatioConstraint.Name = randString()
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 25)
+        label.Text = "⚙️ "..name.." Menu"
+        label.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        label.TextColor3 = Color3.new(1,1,1)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 16
+        label.Parent = panel
 
-	BanCheck.PopupTitle_5.Name = randString()
-	BanCheck.PopupTitle_5.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle_5.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_5.BackgroundTransparency = 1
-	BanCheck.PopupTitle_5.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_5.BorderSizePixel = 0
-	BanCheck.PopupTitle_5.Position = UDim2.new(0.863, 0, -0.007, 0)
-	BanCheck.PopupTitle_5.Size = UDim2.new(0.129, 0, 0.048, 0)
-	BanCheck.PopupTitle_5.ZIndex = 5
-	BanCheck.PopupTitle_5.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_5.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_5.Text = "BAN WARNING"
-	BanCheck.PopupTitle_5.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_5.TextScaled = true
-	BanCheck.PopupTitle_5.TextSize = 14
-	BanCheck.PopupTitle_5.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_5.TextTransparency = 0.2
-	BanCheck.PopupTitle_5.TextWrapped = true
-	BanCheck.PopupTitle_5.TextXAlignment = Enum.TextXAlignment.Right
+        -- Jadikan title bar panel detail bisa digeser
+        makeDraggable(label, detailFrame)
 
-	BanCheck.PopupTitle_6.Name = randString()
-	BanCheck.PopupTitle_6.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.PopupTitle_6.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_6.BackgroundTransparency = 1
-	BanCheck.PopupTitle_6.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_6.BorderSizePixel = 0
-	BanCheck.PopupTitle_6.Position = UDim2.new(0.822, 0, 0.031, 0)
-	BanCheck.PopupTitle_6.Size = UDim2.new(0.213, 0, 0.078, 0)
-	BanCheck.PopupTitle_6.ZIndex = 5
-	BanCheck.PopupTitle_6.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_6.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_6.Text = "Arceus X NEO"
-	BanCheck.PopupTitle_6.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_6.TextScaled = true
-	BanCheck.PopupTitle_6.TextSize = 14
-	BanCheck.PopupTitle_6.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_6.TextWrapped = true
-	BanCheck.PopupTitle_6.TextXAlignment = Enum.TextXAlignment.Right
+        -- Tambahkan UIListLayout untuk mengatur konten secara otomatis
+        local listLayout = Instance.new("UIListLayout", panel)
+        listLayout.Padding = UDim.new(0, 5)
+        listLayout.FillDirection = Enum.FillDirection.Vertical
+        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-	BanCheck.Logo.Name = randString()
-	BanCheck.Logo.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.Logo.BackgroundTransparency = 1
-	BanCheck.Logo.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.Logo.BorderSizePixel = 0
-	BanCheck.Logo.Position = UDim2.new(0, 0, 0, 0)
-	BanCheck.Logo.Size = UDim2.new(0.07, 0, 0.165, 0)
-	BanCheck.Logo.ZIndex = 5
-	BanCheck.Logo.Image = loadImage("rbxassetid://14915932328", "")
+        -- Auto-update CanvasSize when content changes so ScrollingFrame becomes scrollable
+        listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            panel.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+        end)
 
-	BanCheck.BanScreen_CopyLinkButton.Name = randString()
-	BanCheck.BanScreen_CopyLinkButton.AnchorPoint = Vector2.new(1, 0)
-	BanCheck.BanScreen_CopyLinkButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.BanScreen_CopyLinkButton.BackgroundTransparency = 1
-	BanCheck.BanScreen_CopyLinkButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanScreen_CopyLinkButton.BorderSizePixel = 0
-	BanCheck.BanScreen_CopyLinkButton.LayoutOrder = 2
-	BanCheck.BanScreen_CopyLinkButton.Position = UDim2.new(0.805, 0, 0.535, 0)
-	BanCheck.BanScreen_CopyLinkButton.Size = UDim2.new(0.056, 0, 0.111, 0)
-	BanCheck.BanScreen_CopyLinkButton.ZIndex = 5
-	BanCheck.BanScreen_CopyLinkButton.Image = loadImage("rbxassetid://15055157703", "")
-	BanCheck.BanScreen_CopyLinkButton.ImageColor3 = Color3.fromRGB(0, 153, 255)
+        return panel
+    end
 
-	BanCheck.UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(36, 167, 255)), ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 153, 255)), ColorSequenceKeypoint.new(0.00, Color3.fromRGB(51, 173, 255)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))}
-	BanCheck.UIGradient.Name = randString()
+    -- Buat Panel
+    local fishingPanel = createDetailPanel("Auto Fishing")
+    local teleportPanel = createDetailPanel("Teleport")
+    local settingPanel = createDetailPanel("Settings")
+    local miscPanel = createDetailPanel("Misc")
 
-	BanCheck.UIAspectRatioConstraint_3.Name = randString()
-	BanCheck.UIAspectRatioConstraint_3.DominantAxis = Enum.DominantAxis.Height
+    local playerPanel = createDetailPanel("Lokal Player")
 
-	BanCheck.BanServerInvite.Name = randString()
-	BanCheck.BanServerInvite.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.BanServerInvite.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.BanServerInvite.BackgroundTransparency = 1
-	BanCheck.BanServerInvite.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanServerInvite.BorderSizePixel = 0
-	BanCheck.BanServerInvite.Position = UDim2.new(0.499, 0, 0.559, 0)
-	BanCheck.BanServerInvite.Size = UDim2.new(0.527, 0, 0.062, 0)
-	BanCheck.BanServerInvite.ZIndex = 5
-	BanCheck.BanServerInvite.Font = Enum.Font.Unknown
-	BanCheck.BanServerInvite.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
-	BanCheck.BanServerInvite.Text = "https://discord.com/invite/arceus"
-	BanCheck.BanServerInvite.TextColor3 = Color3.fromRGB(0, 153, 255)
-	BanCheck.BanServerInvite.TextScaled = true
-	BanCheck.BanServerInvite.TextSize = 14
-	BanCheck.BanServerInvite.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.BanServerInvite.TextWrapped = true
-	BanCheck.BanServerInvite.TextYAlignment = Enum.TextYAlignment.Top
+    -- Tambahkan UIListLayout ke playerPanel agar semua elemen tersusun otomatis
+    local playerPanelLayout = Instance.new("UIListLayout", playerPanel)
+    playerPanelLayout.Padding = UDim.new(0, 5)
+    playerPanelLayout.FillDirection = Enum.FillDirection.Vertical
+    playerPanelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    playerPanelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    local trollPanel = createDetailPanel("Troll")
 
-	BanCheck.PopupTitle_7.Name = randString()
-	BanCheck.PopupTitle_7.AnchorPoint = Vector2.new(0.5, 1)
-	BanCheck.PopupTitle_7.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_7.BackgroundTransparency = 1
-	BanCheck.PopupTitle_7.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.PopupTitle_7.BorderSizePixel = 0
-	BanCheck.PopupTitle_7.Position = UDim2.new(0.5, 0, 0.993, 0)
-	BanCheck.PopupTitle_7.Size = UDim2.new(0.1, 0, 0.05, 0)
-	BanCheck.PopupTitle_7.Font = Enum.Font.Unknown
-	BanCheck.PopupTitle_7.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.PopupTitle_7.Text = "or"
-	BanCheck.PopupTitle_7.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_7.TextScaled = true
-	BanCheck.PopupTitle_7.TextSize = 14
-	BanCheck.PopupTitle_7.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.PopupTitle_7.TextWrapped = true
+    -- Isi untuk Troll Panel (safe stub)
+    do
+        -- removed demo description and enable button as requested
+    end
 
-	BanCheck.BanScreen_ExitButton.Name = randString()
-	BanCheck.BanScreen_ExitButton.AnchorPoint = Vector2.new(1, 1)
-	BanCheck.BanScreen_ExitButton.BackgroundColor3 = Color3.fromRGB(59, 59, 59)
-	BanCheck.BanScreen_ExitButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanScreen_ExitButton.BorderSizePixel = 0
-	BanCheck.BanScreen_ExitButton.Position = UDim2.new(0.675, 0, 0.993, 0)
-	BanCheck.BanScreen_ExitButton.Size = UDim2.new(0.124, 0, 0.057, 0)
-	BanCheck.BanScreen_ExitButton.ZIndex = 3
-	BanCheck.BanScreen_ExitButton.Font = Enum.Font.Unknown
-	BanCheck.BanScreen_ExitButton.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.BanScreen_ExitButton.Text = "Join Roblox"
-	BanCheck.BanScreen_ExitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.BanScreen_ExitButton.TextScaled = true
-	BanCheck.BanScreen_ExitButton.TextSize = 14
-	BanCheck.BanScreen_ExitButton.TextWrapped = true
+    --------------------------------------------------------------------
+    -- HELPER: Buat Tombol Menu Utama
+    --------------------------------------------------------------------
+    local function createMenuButton(name, panel)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 35) -- Ukuran tombol disesuaikan untuk layout list
+        btn.Text = name
+        btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 14
+        btn.Parent = menuContainer
 
-	BanCheck.UICorner.CornerRadius = UDim.new(0.25, 0)
-	BanCheck.UICorner.Name = randString()
+        btn.MouseButton1Click:Connect(function()
+            -- Jika panel detail belum terlihat, posisikan di sebelah kanan menu utama
+            if not detailFrame.Visible then
+                local mainPos = mainFrame.AbsolutePosition
+                local mainSize = mainFrame.AbsoluteSize
+                detailFrame.Position = UDim2.fromOffset(mainPos.X + mainSize.X + 10, mainPos.Y)
+            end
+            detailFrame.Visible = true
+            for _, c in ipairs(detailFrame:GetChildren()) do
+                if c:IsA("ScrollingFrame") then c.Visible = false end
+            end
+            panel.Visible = true
+        end)
+    end
 
-	BanCheck.UIPadding_2.Name = randString()
-	BanCheck.UIPadding_2.PaddingBottom = UDim.new(0.2, 0)
-	BanCheck.UIPadding_2.PaddingLeft = UDim.new(0.075, 0)
-	BanCheck.UIPadding_2.PaddingRight = UDim.new(0.075, 0)
-	BanCheck.UIPadding_2.PaddingTop = UDim.new(0.2, 0)
+    -- Isi 2x2 Menu
+    createMenuButton("🎣 Fishing", fishingPanel)
+    createMenuButton("📍 Teleport", teleportPanel)
+    createMenuButton("⚙️ Settings", settingPanel)
+    createMenuButton("✨ Misc", miscPanel)
+    createMenuButton("👤 Lokal Player", playerPanel)
+    createMenuButton("🤡 Troll", trollPanel)
 
-	BanCheck.HWID.Name = randString()
-	BanCheck.HWID.AnchorPoint = Vector2.new(0.5, 0)
-	BanCheck.HWID.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.HWID.BackgroundTransparency = 1
-	BanCheck.HWID.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.HWID.BorderSizePixel = 0
-	BanCheck.HWID.Position = UDim2.new(0.499, 0, 0.775, 0)
-	BanCheck.HWID.Size = UDim2.new(0.527, 0, 0.062, 0)
-	BanCheck.HWID.ZIndex = 5
-	BanCheck.HWID.Font = Enum.Font.Unknown
-	BanCheck.HWID.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
-	BanCheck.HWID.Text = "HWID"
-	BanCheck.HWID.TextColor3 = Color3.fromRGB(255, 0, 0)
-	BanCheck.HWID.TextScaled = true
-	BanCheck.HWID.TextSize = 14
-	BanCheck.HWID.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.HWID.TextWrapped = true
-	BanCheck.HWID.TextYAlignment = Enum.TextYAlignment.Top
+    -- Set initial colors for menu buttons
+    for _, btn in ipairs(menuContainer:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            btn.TextColor3 = Color3.new(1,1,1)
+        end
+    end
 
-	BanCheck.HWID_copy.Name = randString()
-	BanCheck.HWID_copy.AnchorPoint = Vector2.new(1, 0)
-	BanCheck.HWID_copy.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.HWID_copy.BackgroundTransparency = 1
-	BanCheck.HWID_copy.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.HWID_copy.BorderSizePixel = 0
-	BanCheck.HWID_copy.LayoutOrder = 2
-	BanCheck.HWID_copy.Position = UDim2.new(0.805, 0, 0.75, 0)
-	BanCheck.HWID_copy.Size = UDim2.new(0.056, 0, 0.111, 0)
-	BanCheck.HWID_copy.ZIndex = 5
-	BanCheck.HWID_copy.Image = loadImage("rbxassetid://15055157703", "")
-	BanCheck.HWID_copy.ImageColor3 = Color3.fromRGB(255, 0, 0)
+        -- Headsit: open a separate closeable GUI from the Troll panel
+        do
+            local function createHeadsitGui()
+                -- If already exists, do nothing (or recreate)
+                local existing = PlayerGui:FindFirstChild("HeadsitGui")
+                if existing then existing:Destroy() end
 
-	BanCheck.BanScreen_Unban.Name = randString()
-	BanCheck.BanScreen_Unban.AnchorPoint = Vector2.new(1, 1)
-	BanCheck.BanScreen_Unban.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	BanCheck.BanScreen_Unban.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BanCheck.BanScreen_Unban.BorderSizePixel = 0
-	BanCheck.BanScreen_Unban.Position = UDim2.new(0.45, 0, 0.993, 0)
-	BanCheck.BanScreen_Unban.Size = UDim2.new(0.124, 0, 0.057, 0)
-	BanCheck.BanScreen_Unban.ZIndex = 3
-	BanCheck.BanScreen_Unban.Font = Enum.Font.Unknown
-	BanCheck.BanScreen_Unban.FontFace = Font.new("rbxassetid://12187360881", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	BanCheck.BanScreen_Unban.Text = "Buy Unban"
-	BanCheck.BanScreen_Unban.TextColor3 = Color3.fromRGB(255, 255, 255)
-	BanCheck.BanScreen_Unban.TextScaled = true
-	BanCheck.BanScreen_Unban.TextSize = 14
-	BanCheck.BanScreen_Unban.TextWrapped = true
+                local sg = Instance.new("ScreenGui")
+                sg.Name = "HeadsitGui"
+                sg.ResetOnSpawn = false
+                sg.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui
 
-	BanCheck.UIAspectRatioConstraint_2 = duplicate(BanCheck.UIAspectRatioConstraint)
-	BanCheck.UIAspectRatioConstraint_2.Name = randString()
-	BanCheck.UIAspectRatioConstraint_2.Parent = BanCheck.Logo
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(0, 320, 0, 180)
+                frame.Position = UDim2.new(0.5, -160, 0.25, 0)
+                frame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+                frame.BorderSizePixel = 0
+                frame.Parent = sg
 
-	BanCheck.UIGradient_2 = duplicate(BanCheck.UIGradient)
-	BanCheck.UIGradient_2.Name = randString()
-	BanCheck.UIGradient_2.Parent = BanCheck.HWID_copy
+                -- Make frame draggable
+                do
+                    local dragging, dragInput, dragStart, startPos
+                    frame.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                            dragging = true
+                            dragStart = input.Position
+                            startPos = frame.Position
+                            input.Changed:Connect(function()
+                                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                            end)
+                        end
+                    end)
+                    frame.InputChanged:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                            dragInput = input
+                        end
+                    end)
+                    UIS.InputChanged:Connect(function(input)
+                        if input == dragInput and dragging then
+                            local delta = input.Position - dragStart
+                            frame.Position = UDim2.new(
+                                startPos.X.Scale, startPos.X.Offset + delta.X,
+                                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                            )
+                        end
+                    end)
+                end
 
-	BanCheck.UIAspectRatioConstraint_4 = duplicate(BanCheck.UIAspectRatioConstraint_3)
-	BanCheck.UIAspectRatioConstraint_4.Name = randString()
-	BanCheck.UIAspectRatioConstraint_4.Parent = BanCheck.HWID_copy
+                local closeBtn = Instance.new("TextButton", frame)
+                closeBtn.Size = UDim2.new(0, 30, 0, 24)
+                closeBtn.Position = UDim2.new(1, -35, 0, 5)
+                closeBtn.Text = "X"
+                closeBtn.Font = Enum.Font.SourceSansBold
+                closeBtn.TextSize = 16
 
-	BanCheck.UICorner_2 = duplicate(BanCheck.UICorner)
-	BanCheck.UICorner_2.Name = randString()
-	BanCheck.UICorner_2.Parent = BanCheck.BanScreen_Unban
+                local searchLabel = Instance.new("TextLabel", frame)
+                searchLabel.Size = UDim2.new(1, -20, 0, 20)
+                searchLabel.Position = UDim2.new(0, 10, 0, 10)
+                searchLabel.Text = "Cari pemain untuk headsit:"
+                searchLabel.BackgroundTransparency = 1
+                searchLabel.TextColor3 = Color3.new(1,1,1)
 
-	BanCheck.UIPadding_3 = duplicate(BanCheck.UIPadding_2)
-	BanCheck.UIPadding_3.Name = randString()
-	BanCheck.UIPadding_3.Parent = BanCheck.BanScreen_Unban
+                local searchBox = Instance.new("TextBox", frame)
+                searchBox.Size = UDim2.new(1, -20, 0, 30)
+                searchBox.Position = UDim2.new(0, 10, 0, 35)
+                searchBox.PlaceholderText = "Masukkan nama/nickname..."
+                searchBox.BackgroundColor3 = Color3.fromRGB(80,80,80)
+                searchBox.TextColor3 = Color3.new(1,1,1)
 
-	BanCheck.BanCheck.Parent = gethui() or game.CoreGui
-	BanCheck.BanScreen.Parent = BanCheck.BanCheck
-	BanCheck.UIPadding.Parent = BanCheck.BanScreen
-	BanCheck.PopupTitle.Parent = BanCheck.BanScreen
-	BanCheck.PopupTitle_2.Parent = BanCheck.BanScreen
-	BanCheck.PopupTitle_3.Parent = BanCheck.BanScreen
-	BanCheck.RedSeparator.Parent = BanCheck.BanScreen
-	BanCheck.MainWindow_UICorner.Parent = BanCheck.RedSeparator
-	BanCheck.PopupTitle_4.Parent = BanCheck.BanScreen
-	BanCheck.KeySystem_AppLogo.Parent = BanCheck.BanScreen
-	BanCheck.UIAspectRatioConstraint.Parent = BanCheck.KeySystem_AppLogo
-	BanCheck.PopupTitle_5.Parent = BanCheck.BanScreen
-	BanCheck.PopupTitle_6.Parent = BanCheck.BanScreen
-	BanCheck.Logo.Parent = BanCheck.BanScreen
-	BanCheck.BanScreen_CopyLinkButton.Parent = BanCheck.BanScreen
-	BanCheck.UIGradient.Parent = BanCheck.BanScreen_CopyLinkButton
-	BanCheck.UIAspectRatioConstraint_3.Parent = BanCheck.BanScreen_CopyLinkButton
-	BanCheck.BanServerInvite.Parent = BanCheck.BanScreen
-	BanCheck.PopupTitle_7.Parent = BanCheck.BanScreen
-	BanCheck.BanScreen_ExitButton.Parent = BanCheck.BanScreen
-	BanCheck.UICorner.Parent = BanCheck.BanScreen_ExitButton
-	BanCheck.UIPadding_2.Parent = BanCheck.BanScreen_ExitButton
-	BanCheck.HWID.Parent = BanCheck.BanScreen
-	BanCheck.HWID_copy.Parent = BanCheck.BanScreen
-	BanCheck.BanScreen_Unban.Parent = BanCheck.BanScreen
+                local suggestionLabel = Instance.new("TextLabel", frame)
+                suggestionLabel.Size = UDim2.new(1, -20, 0, 18)
+                suggestionLabel.Position = UDim2.new(0, 10, 0, 70)
+                suggestionLabel.BackgroundTransparency = 1
+                suggestionLabel.TextColor3 = Color3.fromRGB(180,180,180)
+                suggestionLabel.Font = Enum.Font.SourceSansItalic
+                suggestionLabel.TextSize = 12
 
-	BanCheck.BanScreen_ExitButton.MouseButton1Click:Connect(function()
-		BanCheck.BanCheck:Destroy()
-	end)
-	
-	BanCheck.BanScreen_Unban.MouseButton1Click:Connect(function()
-		(setclipboard or toclipboard)("https://spdmteam.com/api/create-unban-payment?hwid=" .. gethwid())
-		BanCheck.BanScreen_Unban.Text = "Link Copied"
-		task.wait(2)
-		BanCheck.BanScreen_Unban.Text = "Buy Unban"
-	end)
+                local modeLabel = Instance.new("TextLabel", frame)
+                modeLabel.Size = UDim2.new(1, -20, 0, 18)
+                modeLabel.Position = UDim2.new(0, 10, 0, 90)
+                modeLabel.BackgroundTransparency = 1
+                modeLabel.TextColor3 = Color3.new(1,1,1)
+                modeLabel.Text = "Mode: Body (posisi relatif ke torso)"
 
-	BanCheck.BanScreen_CopyLinkButton.MouseButton1Click:Connect(function()
-		(setclipboard or toclipboard)("https://discord.com/invite/arceus")
-	end)
+                local modeToggle = Instance.new("TextButton", frame)
+                modeToggle.Size = UDim2.new(0.5, -15, 0, 28)
+                modeToggle.Position = UDim2.new(0, 10, 0, 110)
+                modeToggle.Text = "Switch to Head"
+                modeToggle.BackgroundColor3 = Color3.fromRGB(120,120,120)
+                modeToggle.TextColor3 = Color3.new(1,1,1)
+                modeToggle.Font = Enum.Font.SourceSansBold
 
-	BanCheck.HWID.Text = gethwid()
-	BanCheck.HWID_copy.MouseButton1Click:Connect(function()
-		(setclipboard or toclipboard)(gethwid())
-	end)
+                local startBtn = Instance.new("TextButton", frame)
+                startBtn.Size = UDim2.new(0.45, -10, 0, 28)
+                startBtn.Position = UDim2.new(0.55, -10, 0, 110)
+                startBtn.Text = "Start"
+                startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
+                startBtn.TextColor3 = Color3.new(1,1,1)
+                startBtn.Font = Enum.Font.SourceSansBold
 
-	return
-end
+                local statusLabel = Instance.new("TextLabel", frame)
+                statusLabel.Size = UDim2.new(1, -20, 0, 20)
+                statusLabel.Position = UDim2.new(0, 10, 0, 145)
+                statusLabel.Text = "Status: Idle"
+                statusLabel.BackgroundTransparency = 1
+                statusLabel.TextColor3 = Color3.new(1,1,1)
 
-executecode(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/ata1.txt"))
+                -- Helpers
+                local function findPlayerByName(name)
+                    if not name or name == "" then return nil end
+                    name = name:lower()
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Name:lower():find(name) or (p.DisplayName and p.DisplayName:lower():find(name)) then
+                            return p
+                        end
+                    end
+                    return nil
+                end
+
+                local function getRootPart(char)
+                    if not char then return nil end
+                    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+                end
+
+                -- Autocomplete
+                local autocompleteDebounce = false
+                searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    if autocompleteDebounce then return end
+                    autocompleteDebounce = true
+                    task.spawn(function()
+                        task.wait(0.12)
+                        local txt = searchBox.Text or ""
+                        if #txt >= 3 then
+                            local lowered = txt:lower()
+                            local found = nil
+                            for _, p in ipairs(Players:GetPlayers()) do
+                                if p.Name:lower():find(lowered, 1, true) or (p.DisplayName and p.DisplayName:lower():find(lowered, 1, true)) then
+                                    found = p; break
+                                end
+                            end
+                            if found then
+                                suggestionLabel.Text = "Suggestion: " .. found.Name
+                                if found.Name:lower():sub(1, #txt) == txt:lower() then
+                                    searchBox.Text = found.Name
+                                    pcall(function() searchBox.CursorPosition = #found.Name + 1 end)
+                                end
+                            else
+                                suggestionLabel.Text = ""
+                            end
+                        else
+                            suggestionLabel.Text = ""
+                        end
+                        autocompleteDebounce = false
+                    end)
+                end)
+
+                local headMode = false
+                local headSitConn = nil
+                local currentTarget = nil
+
+                modeToggle.MouseButton1Click:Connect(function()
+                    headMode = not headMode
+                    modeLabel.Text = headMode and "Mode: Head (posisi relatif ke kepala)" or "Mode: Body (posisi relatif ke torso)"
+                    modeToggle.Text = headMode and "Switch to Body" or "Switch to Head"
+                end)
+
+                local function stopHeadSit()
+                    if headSitConn then headSitConn:Disconnect(); headSitConn = nil end
+                    currentTarget = nil
+                    statusLabel.Text = "Status: Idle"
+                    startBtn.Text = "Start"
+                    startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
+                end
+
+                startBtn.MouseButton1Click:Connect(function()
+                    if headSitConn then stopHeadSit(); return end
+                    local name = searchBox.Text
+                    local p = findPlayerByName(name)
+                    if not p then statusLabel.Text = "Status: Player not found"; return end
+                    if p == LocalPlayer then statusLabel.Text = "Status: Cannot target yourself"; return end
+                    local targetChar = p.Character
+                    local targetRoot = getRootPart(targetChar)
+                    if not targetRoot then statusLabel.Text = "Status: Target has no root part"; return end
+
+                    currentTarget = p
+                    statusLabel.Text = "Status: Target found - ready"
+                    startBtn.Text = "Stop"
+                    startBtn.BackgroundColor3 = Color3.fromRGB(180,80,80)
+
+                    headSitConn = RunService.Heartbeat:Connect(function()
+                        if not currentTarget or not Players:FindFirstChild(currentTarget.Name) then stopHeadSit(); return end
+                        local tchar = currentTarget.Character
+                        local troot = getRootPart(tchar)
+                        local myChar = LocalPlayer.Character
+                        local myRoot = getRootPart(myChar)
+                        local hum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+                        if not troot or not myRoot or not hum then stopHeadSit(); return end
+                        if hum then hum.Sit = true end
+                        local offset = headMode and CFrame.new(0, 1.6, 0.4) or CFrame.new(0, 1.0, 0.4)
+                        local targetCFrame = troot.CFrame * CFrame.Angles(0, math.rad(0), 0)
+                        myRoot.CFrame = targetCFrame * offset
+                    end)
+                end)
+
+                local charConn = LocalPlayer.CharacterRemoving:Connect(function() stopHeadSit() end)
+
+                closeBtn.MouseButton1Click:Connect(function()
+                    stopHeadSit()
+                    if charConn then charConn:Disconnect(); charConn = nil end
+                    if sg and sg.Parent then sg:Destroy() end
+                end)
+            end
+
+            -- Replace in-panel headsit controls with a single button that opens the separate GUI
+            local openHeadsitBtn = Instance.new("TextButton")
+            openHeadsitBtn.Size = UDim2.new(1, -20, 0, 35)
+            openHeadsitBtn.Position = UDim2.new(0, 10, 0, 35)
+            openHeadsitBtn.Text = "Headsit"
+            openHeadsitBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+            openHeadsitBtn.TextColor3 = Color3.new(1,1,1)
+            openHeadsitBtn.Font = Enum.Font.SourceSansBold
+            openHeadsitBtn.TextSize = 14
+            openHeadsitBtn.Parent = trollPanel
+
+            openHeadsitBtn.MouseButton1Click:Connect(function()
+                createHeadsitGui()
+            end)
+        end
+
+    -- Update CanvasSize setelah semua tombol dibuat
+    task.wait() -- Tunggu frame berikutnya agar ukuran konten ter-update
+    menuContainer.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+
+    --------------------------------------------------------------------
+    -- AUTO FISHING
+    --------------------------------------------------------------------
+    local AutoFishing, autoSell = false, false
+    local sellCandidates, sellAttempted = {}, {}
+    local sellPatterns = {
+        "sell", "sellfish", "sell_fish", "sellall", "sell_all", "sellfish", "sellitems",
+        "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
+    }
+
+    local function freezeCharacter(freeze)
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = freeze and 0 or 16
+                hum.JumpPower = freeze and 0 or 50
+            end
+        end
+    end
+
+    -- Daftar kata kunci untuk mendeteksi alat pancing
+    local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi"}
+
+    local function findRod()
+        local char = LocalPlayer.Character
+        local function isFishingTool(tool)
+            if tool:IsA("Tool") then
+                local lowerName = tool.Name:lower()
+                -- Check if name contains a rod keyword
+                for _, keyword in ipairs(rodKeywords) do
+                    if lowerName:find(keyword) then return true end
+                end
+                -- Additionally, check for common event folders, indicating it's an interactive tool
+                if tool:FindFirstChild("events") or tool:FindFirstChild("Events") or tool:FindFirstChild("RemoteEvents") then
+                    return true
+                end
+            end
+            return false
+        end
+
+        -- Pertama, cari alat pancing yang sedang dipakai (di dalam Character)
+        if char then
+            for _, tool in ipairs(char:GetChildren()) do
+                if isFishingTool(tool) then return tool end
+            end
+        end
+
+        -- Jika tidak ditemukan, cari di dalam Backpack
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if isFishingTool(tool) then
+                    -- Alat pancing ditemukan di tas, coba untuk memakainya
+                    if char and char:FindFirstChildOfClass("Humanoid") then
+                        char.Humanoid:EquipTool(tool)
+                        return tool -- Kembalikan tool agar bisa langsung digunakan di frame berikutnya
+                    end
+                end
+            end
+        end
+
+        return nil
+    end
+
+    local function cast()
+        local rod = findRod()
+        if rod and rod:FindFirstChild("events") and rod.events:FindFirstChild("cast") then
+            -- Coba parameter generik terlebih dahulu untuk kompatibilitas
+            pcall(function() rod.events.cast:FireServer(1) end)
+
+            -- Instant cast by firing at the player's position
+            -- LOGIKA INSTANT CAST: Langsung lemparkan umpan ke bawah pemain.
+            -- Ini akan melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Modifikasi: Mengirim posisi tepat di bawah pemain untuk membuat umpan jatuh instan,
+                -- melewati animasi lemparan.
+                pcall(function() rod.events.cast:FireServer(hrp.Position - Vector3.new(0, 5, 0)) end)
+                -- LOGIKA BARU: Langsung tembakkan event 'cast' dengan posisi target.
+                -- Ini adalah metode paling efektif untuk melewati animasi lemparan.
+                -- Posisi target adalah 5 stud di bawah kaki karakter.
+                -- Tentukan posisi target tepat 5 stud di bawah kaki karakter.
+                local targetPosition = hrp.Position - Vector3.new(0, 5, 0)
+                pcall(function() rod.events.cast:FireServer(targetPosition) end)
+                rod.events.cast:FireServer(targetPosition)
+            end
+        end
+    end
+
+    local function collectSellCandidates()
+        sellCandidates = {}
+        local eventsFolder = ReplicatedStorage:FindFirstChild("events")
+        if not eventsFolder then return end
+
+        for _, child in ipairs(eventsFolder:GetChildren()) do
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                local lname = child.Name:lower()
+                for _, p in ipairs(sellPatterns) do
+                    if lname:find(p) then
+                        table.insert(sellCandidates, child)
+                        break
+                    end
+                end
+            end
+        end
+
+        if #sellCandidates == 0 then
+            for _, child in ipairs(eventsFolder:GetChildren()) do
+                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                    table.insert(sellCandidates, child)
+                end
+            end
+        end
+    end
+
+    local function tryInvokeCandidate(ev)
+        if not ev then return false end
+        local id = ev:GetFullName()
+        if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
+            return false
+        end
+        sellAttempted[id] = tick()
+
+        local attempts = {}
+        if ev:IsA("RemoteEvent") then
+            attempts = {
+                function() ev:FireServer() end,
+                function() ev:FireServer(true) end,
+                function() ev:FireServer("SellAll") end,
+                function() ev:FireServer("Sell") end,
+                function() ev:FireServer(LocalPlayer) end,
+                function() ev:FireServer(0) end,
+                function() ev:FireServer({}) end,
+            }
+        else -- RemoteFunction
+            attempts = {
+                function() ev:InvokeServer() end,
+                function() ev:InvokeServer(true) end,
+                function() ev:InvokeServer("SellAll") end,
+                function() ev:InvokeServer(LocalPlayer) end,
+                function() ev:InvokeServer({}) end,
+            }
+        end
+
+        for _, fn in ipairs(attempts) do
+            if pcall(fn) then return true end
+        end
+        return false
+    end
+
+    local function attemptAutoSell()
+        if not autoSell then return false end
+        if #sellCandidates == 0 then collectSellCandidates() end
+        if #sellCandidates == 0 then return false end
+
+        for _, ev in ipairs(sellCandidates) do
+            if tryInvokeCandidate(ev) then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- reel / tarik ikan
+    local function reel()
+        -- METODE BARU YANG DISEMPURNAKAN: Mencari beberapa kemungkinan event reel secara agresif
+        -- dan memanggilnya untuk mendapatkan reel instan sejati, bahkan sebelum UI muncul.
+        local reelEvents = {}
+        local eventNames = {"reelfinished", "reel", "catch", "finish", "ReelFinished", "CatchFish"}
+
+        -- Cari event di ReplicatedStorage
+        local rsEventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
+        if rsEventsFolder then
+            for _, name in ipairs(eventNames) do
+                local ev = rsEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
+            end
+        end
+
+        -- Cari juga event di dalam tool pancing (fallback)
+        local rod = findRod()
+        local toolEventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
+        if toolEventsFolder then
+            for _, name in ipairs(eventNames) do
+                local ev = toolEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
+            end
+        end
+
+        if #reelEvents > 0 then
+            -- Coba panggil semua event yang ditemukan dengan beberapa argumen umum
+            for _, reelEvent in ipairs(reelEvents) do
+                pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
+                pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
+                pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
+                pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
+            end
+            attemptAutoSell()
+            return -- Hentikan eksekusi setelah mencoba semua event
+        end
+    end
+
+    local function enableInstantCatchHook()
+        local eventsFolder = ReplicatedStorage:FindFirstChild("events")
+        if not eventsFolder then return end
+        local possibleEvents = {"reelstarted", "bite", "hooked", "fishbitten", "hook", "caught"}
+
+        for _, name in ipairs(possibleEvents) do
+            local ev = eventsFolder:FindFirstChild(name)
+            if ev and ev:IsA("RemoteEvent") then
+                ev.OnClientEvent:Connect(function(...)
+                    if AutoFishing then
+                        reel()
+                    end
+                end)
+            end
+        end
+    end
+
+    -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
+    enableInstantCatchHook()
+
+    local function shake()
+        local shake_ui = PlayerGui:FindFirstChild("shakeui")
+        if shake_ui then
+            local safezone = shake_ui:FindFirstChild("safezone")
+            local button = safezone and safezone:FindFirstChild("button")
+            if button and button.Visible then
+                if config.ShakeAlwaysCenter then
+                    local size = config.ShakeButtonSize
+                    button.Size = UDim2.new(0, size, 0, size)
+                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+                end
+                -- Logika klik yang disempurnakan untuk PC dan Mobile
+                local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+				if UIS.TouchEnabled then
+					-- Untuk Mobile: gunakan SendTouchEvent (press/release) bila tersedia; fallback ke mouse
+					local canSendTouch = typeof(VIM.SendTouchEvent) == "function"
+					task.spawn(function()
+						for i = 1, 160 do
+							if canSendTouch then
+								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, true, game) end)
+								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, false, game) end)
+							else
+								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, true, game, 0) end)
+								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, false, game, 0) end)
+							end
+						end
+					end)
+				else
+                    -- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
+                    -- Menaikkan jumlah klik untuk mempercepat shake
+					for i = 1, 160 do
+						VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+						VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+                    end
+                end
+            end
+        end
+    end
+
+    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
+
+
+
+    -- UI isi panel fishing
+    local startBtn = Instance.new("TextButton")
+    startBtn.Size = UDim2.new(1, -20, 0, 35)
+    startBtn.Position = UDim2.new(0, 10, 0, 35)
+    startBtn.Text = "▶ Start"
+    startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+    startBtn.TextColor3 = Color3.new(1,1,1)
+    startBtn.Font = Enum.Font.SourceSansBold
+    startBtn.TextSize = 16
+    startBtn.Parent = fishingPanel
+
+    local fishingConnection = nil
+    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir
+    startBtn.MouseButton1Click:Connect(function()
+        AutoFishing = not AutoFishing
+        if AutoFishing then
+            startBtn.Text = "⏸ Stop"
+            startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+
+            if fishingConnection and fishingConnection.Connected then fishingConnection:Disconnect() end
+            lastActionTick = 0 -- Reset timer saat dimulai
+
+            -- Use Heartbeat for a more responsive loop to catch UI changes faster, fixing the shake bug.
+            fishingConnection = RunService.Heartbeat:Connect(function()
+                if not AutoFishing then
+                    if fishingConnection and fishingConnection.Connected then
+                        fishingConnection:Disconnect()
+                        fishingConnection = nil
+                    end
+                    freezeCharacter(false)
+                    return
+                end
+
+                local rod = findRod()
+                if rod then
+                    if config.FreezeWhileFishing then freezeCharacter(true) end
+
+                    local reelUI = PlayerGui:FindFirstChild("reel")
+                    local shakeUI = PlayerGui:FindFirstChild("shakeui")
+
+					-- LOGIKA BARU YANG LEBIH STABIL DAN CERDAS
+					-- Jika UI reel atau shake terdeteksi, panggil reel() dan trigger shake bila perlu.
+					if reelUI or shakeUI then
+						lastActionTick = tick()
+						reel()
+						if shakeUI then
+							shake()
+						end
+					else
+                        -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
+                        -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
+                        if tick() - lastActionTick > 0.3 then
+                            cast()
+                        end
+                    end
+                else
+                    freezeCharacter(false)
+                end
+            end)
+        else
+            startBtn.Text = "▶ Start"
+            startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+            if fishingConnection and fishingConnection.Connected then
+                fishingConnection:Disconnect()
+                fishingConnection = nil
+            end
+            freezeCharacter(false)
+        end
+    end)
+
+    local sellBtn = Instance.new("TextButton")
+    sellBtn.Size = UDim2.new(1, -20, 0, 30)
+    sellBtn.Position = UDim2.new(0, 10, 0, 75)
+    sellBtn.Text = "Auto Sell: OFF"
+    sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    sellBtn.TextColor3 = Color3.new(1,1,1)
+    sellBtn.Font = Enum.Font.SourceSansBold
+    sellBtn.TextSize = 14
+    sellBtn.Parent = fishingPanel
+
+    sellBtn.MouseButton1Click:Connect(function()
+        autoSell = not autoSell
+        if autoSell then
+            sellBtn.Text = "Auto Sell: ON"
+            sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+            collectSellCandidates()
+        else
+            sellBtn.Text = "Auto Sell: OFF"
+            sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end)
+
+    --------------------------------------------------------------------
+    -- TELEPORT PANEL
+    --------------------------------------------------------------------
+    local lokasiData, lokasiCount = {}, 0
+    local TeleportService = game:GetService("TeleportService")
+
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -20, 0, 120)
+    scroll.Position = UDim2.new(0, 10, 0, 35)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.ScrollBarThickness = 6
+    scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    scroll.BorderSizePixel = 0
+    scroll.Parent = teleportPanel
+
+    local UIListLayout = Instance.new("UIListLayout", scroll)
+    UIListLayout.Padding = UDim.new(0, 5)
+    UIListLayout.FillDirection = Enum.FillDirection.Vertical
+    UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function teleportTo(pos)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(pos)
+        end
+    end
+
+    local function buatLokasi(pos, nama)
+        lokasiCount += 1
+        local id = tostring(tick())
+        lokasiData[id] = {Pos = pos, Nama = nama or ("Lokasi " .. lokasiCount)}
+
+        local item = Instance.new("Frame", scroll)
+        item.Size = UDim2.new(1, -10, 0, 35)
+        item.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+
+        local nameBox = Instance.new("TextBox", item)
+        nameBox.Size = UDim2.new(0.45, 0, 1, 0)
+        nameBox.Position = UDim2.new(0, 5, 0, 0)
+        nameBox.Text = lokasiData[id].Nama
+        nameBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        nameBox.TextColor3 = Color3.new(1,1,1)
+        nameBox.ClearTextOnFocus = false
+
+        local tpBtn = Instance.new("TextButton", item)
+        tpBtn.Size = UDim2.new(0.25, -5, 1, -6)
+        tpBtn.Position = UDim2.new(0.45, 5, 0, 3)
+        tpBtn.Text = "Teleport"
+        tpBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 100)
+
+        local delBtn = Instance.new("TextButton", item)
+        delBtn.Size = UDim2.new(0.25, -5, 1, -6)
+        delBtn.Position = UDim2.new(0.70, 5, 0, 3)
+        delBtn.Text = "Hapus"
+        delBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+
+        tpBtn.MouseButton1Click:Connect(function() teleportTo(pos) end)
+        delBtn.MouseButton1Click:Connect(function() lokasiData[id] = nil item:Destroy() end)
+        nameBox.FocusLost:Connect(function() if nameBox.Text ~= "" then lokasiData[id].Nama = nameBox.Text end end)
+
+        scroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+    end
+
+    local addBtn = Instance.new("TextButton", teleportPanel)
+    addBtn.Size = UDim2.new(1, -20, 0, 30)
+    addBtn.Position = UDim2.new(0, 10, 0, 5)
+    addBtn.Text = "➕ Tambah Lokasi"
+    addBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+    addBtn.Parent = teleportPanel
+
+    addBtn.MouseButton1Click:Connect(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            buatLokasi(pos)
+        end
+    end)
+
+    -- Save & Load
+    local function saveLokasi() gui:SetAttribute("LokasiData", HttpService:JSONEncode(lokasiData)) end
+    local function loadLokasi()
+        local data = gui:GetAttribute("LokasiData")
+        if data then
+            local decoded = HttpService:JSONDecode(data)
+            for _, d in pairs(decoded) do
+                buatLokasi(Vector3.new(d.Pos.X, d.Pos.Y, d.Pos.Z), d.Nama)
+            end
+        end
+    end
+    task.spawn(function() while task.wait(3) do saveLokasi() end end) -- This will be called from the main load function
+    -- loadLokasi() -- Moved to main load function
+
+    --------------------------------------------------------------------
+    -- LOKAL PLAYER PANEL
+    --------------------------------------------------------------------
+    local isFlying = false
+    local flySpeed = 50
+    local currentWalkSpeed = 16
+    local currentJumpPower = 50
+    local flyConnection
+    local flyGyro, flyBodyVelocity
+
+    -- MOBILE FLY CONTROLS (Only created if needed)
+    -- Tidak ada lagi GUI tambahan untuk kontrol fly di mobile.
+    -- Semua kontrol akan mengandalkan joystick bawaan.
+    local function createMobileFlyControls() end -- Fungsi kosong untuk kompatibilitas
+    local function toggleFly(enable) end -- Deklarasi awal untuk referensi
+
+    local function flyLoop()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not char or not hum or hum.Health <= 0 or not flyGyro or not flyGyro.Parent or not flyBodyVelocity or not flyBodyVelocity.Parent then
+            toggleFly(false) -- Auto-disable fly if character is invalid
+            return
+        end
+
+        local cam = workspace.CurrentCamera
+        local finalMoveVector = Vector3.new(0,0,0)
+
+        if UIS.TouchEnabled then
+            -- KONTROL BARU: Gunakan joystick bawaan untuk semua gerakan
+            -- FIX: The original mobile flight logic was broken.
+            -- This is a new implementation for intuitive camera-relative flight.
+            -- It uses the joystick for forward/backward and strafing.
+            -- Vertical (up/down) control is not implemented for mobile due to lack of buttons.
+            local joystickMove = hum.MoveDirection
+            finalMoveVector = Vector3.new(0,0,0)
+
+            if joystickMove.Magnitude > 0.01 then
+                -- Project the character's movement direction onto the camera's axes
+                -- to get the player's intended movement relative to the camera.
+                local relativeMove = cam.CFrame:VectorToObjectSpace(joystickMove)
+
+                local forwardAmount = -relativeMove.Z
+                local strafeAmount = relativeMove.X
+
+                -- Combine the movements
+                finalMoveVector = (cam.CFrame.LookVector * forwardAmount) + (cam.CFrame.RightVector * strafeAmount)
+            end
+        else
+            -- Kontrol PC tetap sama
+            if UIS:IsKeyDown(Enum.KeyCode.W) then finalMoveVector = finalMoveVector + cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then finalMoveVector = finalMoveVector - cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then finalMoveVector = finalMoveVector - cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then finalMoveVector = finalMoveVector + cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then finalMoveVector = finalMoveVector + Vector3.new(0,1,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.LeftControl) then finalMoveVector = finalMoveVector - Vector3.new(0,1,0) end
+        end
+
+        if finalMoveVector.Magnitude > 0.01 then
+            flyBodyVelocity.Velocity = finalMoveVector.Unit * flySpeed
+        else
+            flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+        end
+
+        flyGyro.CFrame = cam.CFrame
+    end
+
+    function toggleFly(enable) -- Menggunakan deklarasi fungsi yang sudah ada
+        isFlying = enable
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        local animateScript = char:FindFirstChild("Animate")
+
+        if enable then
+            if not hum or not torso then isFlying = false; return end
+
+            -- Tidak ada lagi pembuatan GUI untuk mobile
+
+            if animateScript then animateScript.Disabled = true end
+            hum.PlatformStand = true
+
+            if not flyGyro or not flyGyro.Parent then
+                flyGyro = Instance.new("BodyGyro", torso)
+                flyGyro.P = 9e4
+                flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+            end
+
+            if not flyBodyVelocity or not flyBodyVelocity.Parent then
+                flyBodyVelocity = Instance.new("BodyVelocity", torso)
+                flyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            end
+
+            flyGyro.CFrame = torso.CFrame
+            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+
+            if flyConnection then flyConnection:Disconnect() end
+            flyConnection = RunService.RenderStepped:Connect(flyLoop)
+        else
+            -- Tidak ada lagi GUI mobile yang perlu dihancurkan
+            if animateScript and animateScript.Parent then animateScript.Disabled = false end
+            if hum and hum.Parent then hum.PlatformStand = false end
+
+            if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+            if flyGyro then flyGyro:Destroy(); flyGyro = nil end
+            if flyBodyVelocity then flyBodyVelocity:Destroy(); flyBodyVelocity = nil end
+        end
+    end
+
+    -- Atur ulang posisi semua elemen di dalam playerPanel agar menggunakan UIListLayout
+    for _, child in ipairs(playerPanel:GetChildren()) do
+        if child:IsA("GuiObject") and not child:IsA("UIListLayout") and not child:IsA("TextLabel") then
+            child.Position = UDim2.new(0.5, 0, 0, 0) -- Reset posisi agar diatur oleh layout
+        end
+    end
+
+    -- UI untuk Player Panel
+    local flyToggleBtn = Instance.new("TextButton", playerPanel)
+    flyToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    flyToggleBtn.Position = UDim2.new(0, 10, 0, 35)
+    flyToggleBtn.Text = "✈️ Fly: OFF"
+    flyToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    flyToggleBtn.TextColor3 = Color3.new(1,1,1)
+    flyToggleBtn.Font = Enum.Font.SourceSansBold
+    flyToggleBtn.TextSize = 14
+
+    local speedControlFrame = Instance.new("Frame", playerPanel)
+    speedControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    speedControlFrame.BackgroundTransparency = 1
+
+    local speedListLayout = Instance.new("UIListLayout", speedControlFrame)
+    speedListLayout.FillDirection = Enum.FillDirection.Horizontal
+    speedListLayout.Padding = UDim.new(0, 5)
+
+    local speedDownBtn = Instance.new("TextButton", speedControlFrame)
+    speedDownBtn.Size = UDim2.new(0.15, 0, 1, 0)
+    speedDownBtn.Text = "-"
+    speedDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+    speedDownBtn.TextColor3 = Color3.new(1,1,1)
+    speedDownBtn.Font = Enum.Font.SourceSansBold
+    speedDownBtn.TextSize = 20
+
+    local speedLabel = Instance.new("TextLabel", speedControlFrame)
+    speedLabel.Size = UDim2.new(0.4, -5, 1, 0)
+    speedLabel.Text = "Speed: " .. flySpeed
+    speedLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    speedLabel.TextColor3 = Color3.new(1,1,1)
+    speedLabel.Font = Enum.Font.SourceSans
+    speedLabel.TextSize = 14
+
+    local speedUpBtn = Instance.new("TextButton", speedControlFrame)
+    speedUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
+    speedUpBtn.Text = "+"
+    speedUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    speedUpBtn.TextColor3 = Color3.new(1,1,1)
+    speedUpBtn.Font = Enum.Font.SourceSansBold
+    speedUpBtn.TextSize = 20
+
+    local speedBox = Instance.new("TextBox", speedControlFrame)
+    speedBox.Size = UDim2.new(0.3, -10, 1, 0)
+    speedBox.PlaceholderText = "Custom"
+    speedBox.Text = ""
+    speedBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    speedBox.TextColor3 = Color3.new(1,1,1)
+    speedBox.ClearTextOnFocus = false
+    speedBox.Font = Enum.Font.SourceSans
+    speedBox.TextSize = 14
+
+    local function updateSpeedDisplay() speedLabel.Text = "Speed: " .. flySpeed end
+    flyToggleBtn.MouseButton1Click:Connect(function() isFlying = not isFlying toggleFly(isFlying) if isFlying then flyToggleBtn.Text = "✈️ Fly: ON" flyToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else flyToggleBtn.Text = "✈️ Fly: OFF" flyToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end end)
+    speedDownBtn.MouseButton1Click:Connect(function() flySpeed = math.max(1, flySpeed - 10) updateSpeedDisplay() end)
+    speedUpBtn.MouseButton1Click:Connect(function() flySpeed = flySpeed + 10 updateSpeedDisplay() end)
+    speedBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newSpeed = tonumber(speedBox.Text) if newSpeed and newSpeed > 0 then flySpeed = newSpeed updateSpeedDisplay() end speedBox.Text = "" end end)
+
+    local isNoclipping = false
+    local noclipLoop = nil
+
+    local function toggleNoclip(enable)
+        isNoclipping = enable
+        if enable and not noclipLoop then
+            noclipLoop = RunService.Stepped:Connect(function()
+                if LocalPlayer.Character then
+                    for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part.CanCollide then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        elseif not enable and noclipLoop then
+            noclipLoop:Disconnect()
+            noclipLoop = nil
+        end
+    end
+
+    local noclipToggleBtn = Instance.new("TextButton", playerPanel)
+    noclipToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    noclipToggleBtn.Text = "🧱 Noclip: OFF"
+    noclipToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noclipToggleBtn.TextColor3 = Color3.new(1,1,1)
+    noclipToggleBtn.Font = Enum.Font.SourceSansBold
+    noclipToggleBtn.TextSize = 14
+    noclipToggleBtn.Parent = playerPanel
+
+    noclipToggleBtn.MouseButton1Click:Connect(function()
+        isNoclipping = not isNoclipping toggleNoclip(isNoclipping) if isNoclipping then noclipToggleBtn.Text = "🧱 Noclip: ON" noclipToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else noclipToggleBtn.Text = "🧱 Noclip: OFF" noclipToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end
+    end)
+
+    local function applyCharacterProperties()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+
+        hum.WalkSpeed = currentWalkSpeed
+        hum.JumpPower = currentJumpPower
+    end
+
+    -- WalkSpeed UI
+    local walkSpeedControlFrame = Instance.new("Frame", playerPanel)
+    walkSpeedControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    walkSpeedControlFrame.BackgroundTransparency = 1
+
+    local wsListLayout = Instance.new("UIListLayout", walkSpeedControlFrame)
+    wsListLayout.FillDirection = Enum.FillDirection.Horizontal
+    wsListLayout.Padding = UDim.new(0, 5)
+
+    local wsDownBtn = Instance.new("TextButton", walkSpeedControlFrame)
+    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0); wsDownBtn.Text = "-"; wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); wsDownBtn.TextColor3 = Color3.new(1,1,1); wsDownBtn.Font = Enum.Font.SourceSansBold; wsDownBtn.TextSize = 20
+
+    local wsLabel = Instance.new("TextLabel", walkSpeedControlFrame)
+    wsLabel.Size = UDim2.new(0.4, -5, 1, 0); wsLabel.Text = "Speed: " .. currentWalkSpeed; wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsLabel.TextColor3 = Color3.new(1,1,1); wsLabel.Font = Enum.Font.SourceSans; wsLabel.TextSize = 14
+
+    local wsUpBtn = Instance.new("TextButton", walkSpeedControlFrame)
+    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0); wsUpBtn.Text = "+"; wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); wsUpBtn.TextColor3 = Color3.new(1,1,1); wsUpBtn.Font = Enum.Font.SourceSansBold; wsUpBtn.TextSize = 20
+
+    local wsBox = Instance.new("TextBox", walkSpeedControlFrame)
+    wsBox.Size = UDim2.new(0.3, -10, 1, 0); wsBox.PlaceholderText = "Custom"; wsBox.Text = ""; wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); wsBox.TextColor3 = Color3.new(1,1,1); wsBox.ClearTextOnFocus = false; wsBox.Font = Enum.Font.SourceSans; wsBox.TextSize = 14
+
+    local function updateWalkSpeedDisplay() wsLabel.Text = "Speed: " .. currentWalkSpeed end
+    wsDownBtn.MouseButton1Click:Connect(function() currentWalkSpeed = math.max(0, currentWalkSpeed - 5) updateWalkSpeedDisplay() applyCharacterProperties() end)
+    wsUpBtn.MouseButton1Click:Connect(function() currentWalkSpeed = currentWalkSpeed + 5 updateWalkSpeedDisplay() applyCharacterProperties() end)
+    wsBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newSpeed = tonumber(wsBox.Text) if newSpeed and newSpeed >= 0 then currentWalkSpeed = newSpeed updateWalkSpeedDisplay() applyCharacterProperties() end wsBox.Text = "" end end)
+
+    -- JumpPower UI
+    local jumpPowerControlFrame = Instance.new("Frame", playerPanel)
+    jumpPowerControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    jumpPowerControlFrame.BackgroundTransparency = 1
+
+    local jpListLayout = Instance.new("UIListLayout", jumpPowerControlFrame)
+    jpListLayout.FillDirection = Enum.FillDirection.Horizontal
+    jpListLayout.Padding = UDim.new(0, 5)
+
+    local jpDownBtn = Instance.new("TextButton", jumpPowerControlFrame)
+    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0); jpDownBtn.Text = "-"; jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80); jpDownBtn.TextColor3 = Color3.new(1,1,1); jpDownBtn.Font = Enum.Font.SourceSansBold; jpDownBtn.TextSize = 20
+
+    local jpLabel = Instance.new("TextLabel", jumpPowerControlFrame)
+    jpLabel.Size = UDim2.new(0.4, -5, 1, 0); jpLabel.Text = "Jump: " .. currentJumpPower; jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpLabel.TextColor3 = Color3.new(1,1,1); jpLabel.Font = Enum.Font.SourceSans; jpLabel.TextSize = 14
+
+    local jpUpBtn = Instance.new("TextButton", jumpPowerControlFrame)
+    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0); jpUpBtn.Text = "+"; jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80); jpUpBtn.TextColor3 = Color3.new(1,1,1); jpUpBtn.Font = Enum.Font.SourceSansBold; jpUpBtn.TextSize = 20
+
+    local jpBox = Instance.new("TextBox", jumpPowerControlFrame)
+    jpBox.Size = UDim2.new(0.3, -10, 1, 0); jpBox.PlaceholderText = "Custom"; jpBox.Text = ""; jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); jpBox.TextColor3 = Color3.new(1,1,1); jpBox.ClearTextOnFocus = false; jpBox.Font = Enum.Font.SourceSans; jpBox.TextSize = 14
+
+    local function updateJumpPowerDisplay() jpLabel.Text = "Jump: " .. currentJumpPower end
+    jpDownBtn.MouseButton1Click:Connect(function() currentJumpPower = math.max(0, currentJumpPower - 10) updateJumpPowerDisplay() applyCharacterProperties() end)
+    jpUpBtn.MouseButton1Click:Connect(function() currentJumpPower = currentJumpPower + 10 updateJumpPowerDisplay() applyCharacterProperties() end)
+    jpBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newPower = tonumber(jpBox.Text) if newPower and newPower >= 0 then currentJumpPower = newPower updateJumpPowerDisplay() applyCharacterProperties() end jpBox.Text = "" end end)
+
+    -- Infinite Jump
+    local isInfiniteJumpEnabled = false
+    local infiniteJumpConnection = nil
+
+    local function onJumpRequest()
+        -- Fungsi ini akan dipanggil setiap kali pemain menekan tombol lompat.
+        if isInfiniteJumpEnabled then
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                -- Secara paksa mengubah state humanoid menjadi Jumping, memungkinkan lompatan di udara.
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end
+
+    local function toggleInfiniteJump(enable)
+        isInfiniteJumpEnabled = enable
+        if enable then
+            if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+            -- Menggunakan JumpRequest yang lebih andal daripada StateChanged.
+            infiniteJumpConnection = UIS.JumpRequest:Connect(onJumpRequest)
+        else
+            if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection = nil end
+        end
+    end
+
+    local infiniteJumpToggleBtn = Instance.new("TextButton", playerPanel)
+    infiniteJumpToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
+    infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100); infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1); infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold; infiniteJumpToggleBtn.TextSize = 14
+
+    infiniteJumpToggleBtn.MouseButton1Click:Connect(function() isInfiniteJumpEnabled = not isInfiniteJumpEnabled toggleInfiniteJump(isInfiniteJumpEnabled) if isInfiniteJumpEnabled then infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end end)
+
+    -- Camera Distance UI (Set Jarak)
+    local camDistControlFrame = Instance.new("Frame", playerPanel)
+    camDistControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    camDistControlFrame.BackgroundTransparency = 1
+
+    local cdListLayout = Instance.new("UIListLayout", camDistControlFrame); cdListLayout.FillDirection = Enum.FillDirection.Horizontal; cdListLayout.Padding = UDim.new(0, 5); cdListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local cdLabel = Instance.new("TextLabel", camDistControlFrame); cdLabel.Size = UDim2.new(0.4, -5, 1, 0); cdLabel.Text = "Set Distance:"; cdLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdLabel.TextColor3 = Color3.new(1,1,1); cdLabel.Font = Enum.Font.SourceSans; cdLabel.TextSize = 14
+
+    local cdBox = Instance.new("TextBox", camDistControlFrame)
+    cdBox.Size = UDim2.new(0.4, -10, 1, 0); cdBox.PlaceholderText = "Jarak"; cdBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdBox.TextColor3 = Color3.new(1,1,1); cdBox.ClearTextOnFocus = false; cdBox.Font = Enum.Font.SourceSans; cdBox.TextSize = 14
+
+    local cdSetBtn = Instance.new("TextButton", camDistControlFrame)
+    cdSetBtn.Size = UDim2.new(0.2, 0, 1, 0); cdSetBtn.Text = "Set"; cdSetBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180); cdSetBtn.TextColor3 = Color3.new(1,1,1); cdSetBtn.Font = Enum.Font.SourceSansBold; cdSetBtn.TextSize = 14
+
+    cdSetBtn.MouseButton1Click:Connect(function()
+        local distance = tonumber(cdBox.Text)
+        if not distance or distance < 0 then return end
+
+        -- Logika untuk memindahkan kamera ke jarak tertentu
+        local originalMin = LocalPlayer.CameraMinZoomDistance
+        local originalMax = LocalPlayer.CameraMaxZoomDistance
+        if originalMax < distance then originalMax = distance end
+
+        LocalPlayer.CameraMaxZoomDistance = distance
+        LocalPlayer.CameraMinZoomDistance = distance
+        task.wait() -- Tunggu satu frame agar kamera "pindah" ke posisi baru
+        LocalPlayer.CameraMaxZoomDistance = originalMax
+        LocalPlayer.CameraMinZoomDistance = originalMin -- Kembalikan min zoom ke nilai aslinya
+    end)
+
+    -- POV Toggle
+    local isPovEnabled = false
+    local povConnection = nil
+    local povToggleBtn = Instance.new("TextButton", playerPanel)
+    povToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    povToggleBtn.Text = "Enable POV Zoom: OFF"
+    povToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    povToggleBtn.TextColor3 = Color3.new(1,1,1)
+    povToggleBtn.Font = Enum.Font.SourceSansBold
+    povToggleBtn.TextSize = 14
+
+    povToggleBtn.MouseButton1Click:Connect(function()
+        isPovEnabled = not isPovEnabled
+        povToggleBtn.Text = "Enable POV Zoom: " .. (isPovEnabled and "ON" or "OFF")
+        povToggleBtn.BackgroundColor3 = isPovEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+        if isPovEnabled and not (povConnection and povConnection.Connected) then
+            povConnection = RunService.RenderStepped:Connect(function() LocalPlayer.CameraMinZoomDistance = 0.5 end)
+        elseif not isPovEnabled and (povConnection and povConnection.Connected) then
+            povConnection:Disconnect()
+            povConnection = nil
+        end
+    end)
+
+    --------------------------------------------------------------------
+    -- CHARACTER STATE HANDLER (Fixes features after death)
+    --------------------------------------------------------------------
+    local function onCharacterAdded(char)
+        -- Wait for essential parts to exist (Humanoid / HumanoidRootPart) before applying properties
+        local c = char or LocalPlayer.Character
+        if not c then return end
+        -- Wait briefly for humanoid to exist (timeout to avoid stall)
+        local hum = c:FindFirstChildOfClass("Humanoid") or c:WaitForChild("Humanoid", 5)
+        local hrp = c:FindFirstChild("HumanoidRootPart") or c:WaitForChild("HumanoidRootPart", 5)
+
+        -- Apply settings once ready
+        if isFlying then toggleFly(true) end
+        applyCharacterProperties()
+        if isInfiniteJumpEnabled then toggleInfiniteJump(true) end -- Re-apply infinite jump on respawn
+
+        -- Small enforcement loop for the first few seconds to counter games that reset humanoid properties on spawn
+        task.spawn(function()
+            local attempts = 0
+            while attempts < 8 do -- ~8 * 0.25s = 2s of retries
+                attempts = attempts + 1
+                local curChar = LocalPlayer.Character
+                local curHum = curChar and curChar:FindFirstChildOfClass("Humanoid")
+                if curHum then
+                    if curHum.WalkSpeed ~= currentWalkSpeed then curHum.WalkSpeed = currentWalkSpeed end
+                    if curHum.JumpPower ~= currentJumpPower then curHum.JumpPower = currentJumpPower end
+                end
+                task.wait(0.25)
+            end
+        end)
+    end
+
+    LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+    --------------------------------------------------------------------
+    -- SERVER UTILS
+    --------------------------------------------------------------------
+    -- serverHop:
+    -- Tries to fetch the list of public server instances for the current place via
+    -- the Roblox public API and teleport the local player to a different instance.
+    -- Behavior and fallbacks:
+    --  - If HttpService is disabled/unavailable, falls back to Teleport which joins a random server.
+    --  - Prefers servers that are not full and have a different JobId than the current one.
+    --  - If no candidate is found after paging a few pages, falls back to a generic Teleport.
+    local function serverHop()
+        -- Falls back to a plain Teleport if HttpService is not available or no candidate found.
+        task.spawn(function()
+            local ok, err = pcall(function()
+                -- If HttpService is not usable, fallback to a simple Teleport which will join a random server.
+                if not HttpService or not HttpService.GetAsync or not HttpService.JSONDecode then
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    return
+                end
+
+                if not HttpService.HttpEnabled then
+                    -- Cannot call Roblox web APIs from this environment; fallback.
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    return
+                end
+
+                local placeId = tostring(game.PlaceId)
+                local baseUrl = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+                local response = HttpService:GetAsync(baseUrl)
+                local data = HttpService:JSONDecode(response)
+
+                local candidates = {}
+                if data and data.data then
+                    for _, server in ipairs(data.data) do
+                        local sid = server.id or server.id
+                        -- Ensure sid exists and is not the current JobId
+                        if sid and tostring(sid) ~= tostring(game.JobId) then
+                            -- prefer servers that are not full
+                            if server.playing and server.maxPlayers and server.playing < server.maxPlayers then
+                                table.insert(candidates, sid)
+                            end
+                        end
+                    end
+                end
+
+                -- If none found in first page, try additional pages (if present) up to a few times
+                local cursor = data and data.nextPageCursor
+                local tries = 0
+                while #candidates == 0 and cursor and tries < 5 do
+                    tries = tries + 1
+                    local pageUrl = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?cursor=" .. HttpService:UrlEncode(cursor) .. "&limit=100"
+                    local pageResp = HttpService:GetAsync(pageUrl)
+                    local pageData = HttpService:JSONDecode(pageResp)
+                    if pageData and pageData.data then
+                        for _, server in ipairs(pageData.data) do
+                            local sid = server.id or server.id
+                            if sid and tostring(sid) ~= tostring(game.JobId) then
+                                if server.playing and server.maxPlayers and server.playing < server.maxPlayers then
+                                    table.insert(candidates, sid)
+                                end
+                            end
+                        end
+                    end
+                    cursor = pageData and pageData.nextPageCursor
+                end
+
+                if #candidates > 0 then
+                    -- Shuffle candidates to avoid bias
+                    for i = #candidates, 2, -1 do
+                        local j = math.random(1, i)
+                        candidates[i], candidates[j] = candidates[j], candidates[i]
+                    end
+
+                    local teleported = false
+                    local lastErr = nil
+                    for _, chosen in ipairs(candidates) do
+                        -- Ensure chosen is different from current JobId
+                        if tostring(chosen) == tostring(game.JobId) then
+                            continue
+                        end
+
+                        -- Try a couple of Teleport variations; some environments behave differently
+                        local success, e
+                        success, e = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(game.PlaceId, chosen, {LocalPlayer})
+                        end)
+                        if success then teleported = true break end
+
+                        success, e = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(game.PlaceId, chosen)
+                        end)
+                        if success then teleported = true break end
+
+                        lastErr = e
+                    end
+
+                    if not teleported then
+                        -- No candidate worked; fallback
+                        if lastErr then warn("serverHop: teleport attempts failed: ", tostring(lastErr)) end
+                        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    end
+                else
+                    -- No suitable candidate found; fallback to a generic teleport which will join a random server
+                    warn("serverHop: no candidate servers found, falling back to Teleport")
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end
+            end)
+
+            if not ok then
+                -- If anything failed, attempt a simple teleport as last resort
+                pcall(function()
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end)
+            end
+        end)
+    end
+
+    local function rejoinServer()
+        -- Menggunakan TeleportService untuk bergabung kembali ke server yang sama.
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
+        end)
+    end
+
+    local function createNewPublicServer()
+        -- Fungsi ini memberitahu Roblox untuk memindahkan pemain ke tempat awal game.
+        -- Matchmaking Roblox kemudian akan menempatkan mereka di server yang ada
+        -- atau membuat yang baru jika perlu. Ini adalah cara standar untuk bergabung dengan server "baru".
+        pcall(function()
+            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end)
+    end
+
+    --------------------------------------------------------------------
+    -- MISC PANEL
+    --------------------------------------------------------------------
+    local isEspEnabled = false
+    local espElements = {} -- Menyimpan semua elemen ESP yang dibuat (userId -> gui)
+    local espCharConnections = {} -- Menyimpan koneksi CharacterAdded per userId
+    local espPlayerAddedConn, espPlayerRemovingConn = nil, nil
+    local espUpdateConnection = nil
+
+    local function removeEspForPlayer(player)
+        -- Destroy GUI and disconnect character connection for a given player
+        if not player then return end
+        local id = tostring(player.UserId or tostring(player))
+        local gui = espElements[id]
+        if gui and gui.Parent then gui:Destroy() end
+        espElements[id] = nil
+
+        if espCharConnections[id] then
+            espCharConnections[id]:Disconnect()
+            espCharConnections[id] = nil
+        end
+    end
+
+    local function createEspForPlayer(player)
+        if not player or player == LocalPlayer then return end
+        local id = tostring(player.UserId or tostring(player))
+        if espElements[id] then return end
+
+        local function setupEsp(char)
+            -- Clean previous GUI if exists
+            if espElements[id] then
+                if espElements[id].Parent then espElements[id]:Destroy() end
+                espElements[id] = nil
+            end
+
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not hrp or not hum then
+                -- Try waiting briefly (in case character is still loading)
+                hrp = char and char:WaitForChild("HumanoidRootPart", 5)
+                hum = char and char:FindFirstChildOfClass("Humanoid")
+                if not hrp or not hum then return end
+            end
+
+            local espGui = Instance.new("BillboardGui")
+            espGui.Name = "PlayerESP"
+            espGui.Adornee = hrp
+            espGui.AlwaysOnTop = true
+            espGui.Size = UDim2.new(0, 160, 0, 48)
+            espGui.StudsOffset = Vector3.new(0, 2.5, 0)
+            pcall(function() espGui.MaxDistance = 1e5 end)
+            espGui.Parent = PlayerGui
+
+            local nameLabel = Instance.new("TextLabel", espGui)
+            nameLabel.Name = "NameLabel"
+            nameLabel.Size = UDim2.new(1, 0, 0, 20)
+            nameLabel.Text = player.Name
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextColor3 = Color3.new(1, 1, 1)
+            nameLabel.Font = Enum.Font.SourceSansBold
+            nameLabel.TextSize = 16
+
+            local distanceLabel = Instance.new("TextLabel", espGui)
+            distanceLabel.Name = "DistanceLabel"
+            distanceLabel.Size = UDim2.new(1, 0, 0, 20)
+            distanceLabel.Position = UDim2.new(0, 0, 0, 18)
+            distanceLabel.Text = "0m"
+            distanceLabel.BackgroundTransparency = 1
+            distanceLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+            distanceLabel.Font = Enum.Font.SourceSans
+            distanceLabel.TextSize = 14
+
+            local healthBarBg = Instance.new("Frame", espGui)
+            healthBarBg.Name = "HealthBarBg"
+            healthBarBg.Size = UDim2.new(1, 0, 0, 5)
+            healthBarBg.Position = UDim2.new(0, 0, 0, 38)
+            healthBarBg.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            healthBarBg.BorderSizePixel = 0
+
+            local healthBar = Instance.new("Frame", healthBarBg)
+            healthBar.Name = "HealthBar"
+            healthBar.Size = UDim2.new(1, 0, 1, 0)
+            healthBar.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+            healthBar.BorderSizePixel = 0
+
+            espElements[id] = espGui
+        end
+
+        -- If character exists now, attempt to setup immediately
+        if player.Character then pcall(function() setupEsp(player.Character) end) end
+
+        -- Connect CharacterAdded and save connection keyed by userId
+        if not espCharConnections[id] then
+            espCharConnections[id] = player.CharacterAdded:Connect(function(newChar)
+                task.wait(0.05)
+                pcall(function() setupEsp(newChar) end)
+            end)
+        end
+    end
+
+    local function toggleEsp(enable)
+        if enable then
+            -- Create ESPs for existing players
+            for _, player in ipairs(Players:GetPlayers()) do
+                createEspForPlayer(player)
+            end
+
+            -- Connect player joining / leaving
+            if not espPlayerAddedConn then
+                espPlayerAddedConn = Players.PlayerAdded:Connect(function(p) createEspForPlayer(p) end)
+            end
+            if not espPlayerRemovingConn then
+                espPlayerRemovingConn = Players.PlayerRemoving:Connect(function(p) removeEspForPlayer(p) end)
+            end
+
+            -- Start update loop
+            espUpdateConnection = RunService.RenderStepped:Connect(function()
+                local localChar = LocalPlayer.Character
+                local localHrp = localChar and localChar:FindFirstChild("HumanoidRootPart")
+                if not localHrp then return end
+
+                -- Use Players:GetPlayers to iterate current players, update or create ESP immediately
+                local currentPlayers = Players:GetPlayers()
+                -- First ensure ESP exists for all current players (fast bulk creation)
+                for _, p in ipairs(currentPlayers) do
+                    if p ~= LocalPlayer then
+                        local uid = tostring(p.UserId or tostring(p))
+                        if not espElements[uid] then
+                            createEspForPlayer(p)
+                        end
+                    end
+                end
+
+                -- Then update existing ESP GUIs
+                for uid, gui in pairs(espElements) do
+                    if not gui or not gui.Parent then
+                        espElements[uid] = nil
+                    else
+                        -- Try to find player by userId
+                        local targetPlayer = nil
+                        for _, p in ipairs(currentPlayers) do if tostring(p.UserId) == uid then targetPlayer = p break end end
+                        if not targetPlayer or not targetPlayer.Parent then
+                            removeEspForPlayer(targetPlayer or {UserId = uid})
+                        else
+                            local targetChar = targetPlayer.Character
+                            local targetHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+                            local hum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+                            if targetHrp and hum then
+                                local dist = math.floor((targetHrp.Position - localHrp.Position).Magnitude)
+                                local distanceLabel = gui:FindFirstChild("DistanceLabel")
+                                local hbBg = gui:FindFirstChild("HealthBarBg")
+                                local healthBar = hbBg and hbBg:FindFirstChild("HealthBar")
+                                if distanceLabel then distanceLabel.Text = dist .. "m" end
+                                if healthBar and hum.MaxHealth and hum.MaxHealth > 0 then
+                                    local frac = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                                    healthBar.Size = UDim2.new(frac, 0, 1, 0)
+                                end
+                            else
+                                local distanceLabel = gui and gui:FindFirstChild("DistanceLabel")
+                                if distanceLabel then distanceLabel.Text = "N/A" end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            -- Disable update loop
+            if espUpdateConnection then espUpdateConnection:Disconnect(); espUpdateConnection = nil end
+
+            -- Disconnect player add/remove listeners
+            if espPlayerAddedConn then espPlayerAddedConn:Disconnect(); espPlayerAddedConn = nil end
+            if espPlayerRemovingConn then espPlayerRemovingConn:Disconnect(); espPlayerRemovingConn = nil end
+
+            -- Disconnect any CharacterAdded connections
+            for player, conn in pairs(espCharConnections) do
+                if conn then conn:Disconnect() end
+                espCharConnections[player] = nil
+            end
+
+            -- Destroy all GUI elements (force destroy to ensure none persist)
+            for uid, gui in pairs(espElements) do
+                if gui then
+                    pcall(function() gui:Destroy() end)
+                end
+                espElements[uid] = nil
+            end
+        end
+    end
+
+    -- ESP Toggle
+    local espToggleBtn = Instance.new("TextButton", miscPanel)
+    espToggleBtn.Size = UDim2.new(1, -10, 0, 30)
+    espToggleBtn.Text = "ESP: OFF"
+    espToggleBtn.MouseButton1Click:Connect(function()
+        isEspEnabled = not isEspEnabled
+        espToggleBtn.Text = "ESP: " .. (isEspEnabled and "ON" or "OFF")
+        toggleEsp(isEspEnabled)
+    end)
+
+    -- Server Hop Button
+    local serverHopBtn = Instance.new("TextButton", miscPanel)
+    serverHopBtn.Size = UDim2.new(1, -10, 0, 30)
+    serverHopBtn.Text = "🚀 Server Hop"
+    serverHopBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+    serverHopBtn.TextColor3 = Color3.new(1,1,1)
+    serverHopBtn.Font = Enum.Font.SourceSansBold
+    serverHopBtn.TextSize = 14
+    serverHopBtn.MouseButton1Click:Connect(function()
+        serverHopBtn.Text = "Hopping..."
+        serverHop()
+    end)
+
+    -- Rejoin Button
+    local rejoinBtn = Instance.new("TextButton", miscPanel)
+    rejoinBtn.Size = UDim2.new(1, -10, 0, 30)
+    rejoinBtn.Text = "🔁 Rejoin"
+    rejoinBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 120)
+    rejoinBtn.TextColor3 = Color3.new(1,1,1)
+    rejoinBtn.Font = Enum.Font.SourceSansBold
+    rejoinBtn.TextSize = 14
+    rejoinBtn.MouseButton1Click:Connect(function()
+        rejoinBtn.Text = "Rejoining..."
+        rejoinServer()
+    end)
+
+    -- New Server Button
+    local newServerBtn = Instance.new("TextButton", miscPanel)
+    newServerBtn.Size = UDim2.new(1, -10, 0, 30)
+    newServerBtn.Text = "🌐 Buat Server Baru"
+    newServerBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
+    newServerBtn.TextColor3 = Color3.new(1,1,1)
+    newServerBtn.Font = Enum.Font.SourceSansBold
+    newServerBtn.TextSize = 14
+    newServerBtn.MouseButton1Click:Connect(function()
+        newServerBtn.Text = "Membuat..."
+        createNewPublicServer()
+    end)
+
+    -- No Fog Toggle (ON/OFF)
+    local isNoFogEnabled = false
+    local originalFogSettings = {}
+    local clonedAtmospheres = {}
+    local noFogConnection = nil
+    local noFogBtn = Instance.new("TextButton", miscPanel)
+    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
+    noFogBtn.Text = "🌫️ No Fog: OFF"
+    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noFogBtn.TextColor3 = Color3.new(1,1,1)
+    noFogBtn.Font = Enum.Font.SourceSansBold
+    noFogBtn.TextSize = 14
+
+    local function toggleNoFog(enable)
+        isNoFogEnabled = enable
+        local lighting = game:GetService("Lighting")
+
+        if enable then
+            -- Simpan pengaturan asli
+            originalFogSettings.FogStart = lighting.FogStart
+            originalFogSettings.FogEnd = lighting.FogEnd
+            clonedAtmospheres = {}
+
+            -- Kloning dan hancurkan objek Atmosphere
+            for _, v in ipairs(lighting:GetDescendants()) do
+                if v:IsA("Atmosphere") then
+                    table.insert(clonedAtmospheres, v:Clone())
+                    v:Destroy()
+                end
+            end
+
+            -- Mulai loop untuk memaksa kabut hilang
+            if not (noFogConnection and noFogConnection.Connected) then
+                noFogConnection = RunService.Stepped:Connect(function()
+                    pcall(function() lighting.FogEnd = 100000 end)
+                end)
+            end
+
+            noFogBtn.Text = "🌫️ No Fog: ON"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+        else
+            -- Hentikan loop
+            if noFogConnection and noFogConnection.Connected then
+                noFogConnection:Disconnect()
+                noFogConnection = nil
+            end
+
+            -- Kembalikan pengaturan asli
+            pcall(function() lighting.FogStart = originalFogSettings.FogStart end)
+            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
+            for _, cloned in ipairs(clonedAtmospheres) do cloned.Parent = lighting end
+
+            noFogBtn.Text = "🌫️ No Fog: OFF"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    noFogBtn.MouseButton1Click:Connect(function()
+        toggleNoFog(not isNoFogEnabled)
+    end)
+
+    -- Spectate Toggle
+    local toggleSpectateBtn = Instance.new("TextButton", miscPanel)
+    toggleSpectateBtn.Size = UDim2.new(1, -10, 0, 30)
+    toggleSpectateBtn.Text = "Spectate: OFF"
+
+    --=== Spectate Variables ===--
+    local spectating = false
+    local spectateIndex = 1
+    local spectateList = {}
+    local currentTarget = nil
+    local respawnConn
+
+    --=== Spectate GUI (inside Misc Panel) ===--
+    local spectateControlsFrame = Instance.new("Frame", miscPanel)
+    spectateControlsFrame.Size = UDim2.new(1, -10, 0, 85)
+    spectateControlsFrame.BackgroundTransparency = 1
+    spectateControlsFrame.Visible = false -- Hide by default
+
+    local spectateListLayout = Instance.new("UIListLayout", spectateControlsFrame)
+    spectateListLayout.FillDirection = Enum.FillDirection.Vertical
+    spectateListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    spectateListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    spectateListLayout.Padding = UDim.new(0, 5)
+
+    -- Player Name Label
+    local NameLabel = Instance.new("TextLabel", spectateControlsFrame)
+    NameLabel.Size = UDim2.new(1, 0, 0, 30)
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.TextSize = 18
+    NameLabel.Font = Enum.Font.SourceSansBold
+    NameLabel.Text = "Not Spectating"
+
+    -- Button Frame
+    local ButtonFrame = Instance.new("Frame", spectateControlsFrame)
+    ButtonFrame.Size = UDim2.new(1, 0, 0, 40)
+    ButtonFrame.BackgroundTransparency = 1
+
+    local ButtonLayout = Instance.new("UIListLayout", ButtonFrame)
+    ButtonLayout.FillDirection = Enum.FillDirection.Horizontal
+    ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    ButtonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    ButtonLayout.Padding = UDim.new(0, 5)
+
+    -- Button creation helper
+    local function CreateSpectateButton(text, width)
+        local btn = Instance.new("TextButton", ButtonFrame)
+        btn.Size = UDim2.new(0, width or 45, 0, 35)
+        btn.TextSize = 14
+        btn.Font = Enum.Font.SourceSansBold
+        btn.Text = text
+        return btn
+    end
+
+    local PrevButton = CreateSpectateButton("Prev")
+    local NextButton = CreateSpectateButton("Next")
+    local TeleportButton = CreateSpectateButton("TP", 35)
+    local CopyButton = CreateSpectateButton("Copy", 45)
+    local ExitButton = CreateSpectateButton("Exit", 45)
+
+    --=== Spectate Functions ===--
+    local function UpdateSpectateList()
+        spectateList = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            local char = p.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            -- Hanya tambahkan pemain lain yang karakternya ada dan hidup
+            if p ~= LocalPlayer and hum and hum.Health > 0 then
+                table.insert(spectateList, p)
+            end
+        end
+    end
+
+    local function SetSpectateTarget(index)
+        -- Jika daftar kosong (misalnya setelah update), hentikan spectate.
+        if #spectateList == 0 then
+            StopSpectate()
+            return
+        end
+
+        if index > #spectateList then index = 1 end
+        if index < 1 then index = #spectateList end
+        spectateIndex = index
+
+        local target = spectateList[spectateIndex]
+        if not target then return end -- Pengaman
+
+        if respawnConn then respawnConn:Disconnect(); respawnConn = nil end
+
+        -- Validasi ulang target sebelum spectate, karena bisa saja mati setelah daftar dibuat
+        local char = target.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if hum and hum.Health > 0 then
+            -- Target valid, lanjutkan
+            NameLabel.Text = target.Name
+            currentTarget = target
+            Camera.CameraSubject = hum
+            Camera.CameraType = Enum.CameraType.Custom
+            respawnConn = target.CharacterAdded:Connect(function(newChar)
+                task.wait(0.1)
+                local newHum = newChar:FindFirstChild("Humanoid")
+                if spectating and newHum then Camera.CameraSubject = newHum; NameLabel.Text = target.Name end
+            end)
+        else
+            -- Target menjadi tidak valid (mati), update daftar dan coba lagi
+            UpdateSpectateList()
+            SetSpectateTarget(spectateIndex) -- Coba lagi dengan daftar yang baru
+        end
+    end
+
+    local function StopSpectate()
+        spectating = false
+        NameLabel.Text = "Not Spectating"
+        spectateControlsFrame.Visible = false
+        currentTarget = nil
+        if respawnConn then respawnConn:Disconnect(); respawnConn = nil end
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            Camera.CameraType = Enum.CameraType.Custom
+            Camera.CameraSubject = LocalPlayer.Character.Humanoid
+        end
+        toggleSpectateBtn.Text = "Spectate: OFF"
+    end
+
+    local function StartSpectate()
+        UpdateSpectateList()
+        if #spectateList > 0 then
+            spectating = true
+            SetSpectateTarget(1)
+            spectateControlsFrame.Visible = true
+            toggleSpectateBtn.Text = "Spectate: ON"
+        else
+            -- No players to spectate, give user feedback
+            StopSpectate() -- Make sure state is clean
+            toggleSpectateBtn.Text = "No one to spectate"
+            task.delay(2, function()
+                if not spectating then -- Revert only if still not spectating
+                    toggleSpectateBtn.Text = "Spectate: OFF"
+                end
+            end)
+        end
+    end
+
+    -- Always Day Toggle
+    local isAlwaysDayEnabled = false
+    local alwaysDayConnection = nil
+    local alwaysDayBtn = Instance.new("TextButton", miscPanel)
+    alwaysDayBtn.Size = UDim2.new(1, -10, 0, 30)
+    alwaysDayBtn.Text = "☀️ Always Day: OFF"
+    alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    alwaysDayBtn.TextColor3 = Color3.new(1,1,1)
+    alwaysDayBtn.Font = Enum.Font.SourceSansBold
+    alwaysDayBtn.TextSize = 14
+
+    local function toggleAlwaysDay(enable)
+        isAlwaysDayEnabled = enable
+        if enable and not (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection = RunService.Stepped:Connect(function()
+                pcall(function() game:GetService("Lighting").ClockTime = 14 end)
+            end)
+            alwaysDayBtn.Text = "☀️ Always Day: ON"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(240, 190, 50)
+        elseif not enable and (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection:Disconnect()
+            alwaysDayConnection = nil
+            alwaysDayBtn.Text = "☀️ Always Day: OFF"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
+
+    --------------------------------------------------------------------
+    -- SETTINGS PANEL
+    --------------------------------------------------------------------
+    local isFpsBoosted = false
+    local originalSettings = {}
+
+    local function toggleFpsBoost(enable)
+        local lighting = game:GetService("Lighting")
+        local userSettings = settings()
+
+        if enable and not isFpsBoosted then
+            -- Simpan pengaturan asli
+            originalSettings.globalShadows = lighting.GlobalShadows
+            originalSettings.fogEnd = lighting.FogEnd
+            originalSettings.qualityLevel = userSettings.Rendering.QualityLevel
+            originalSettings.effects = {}
+            for _, effect in ipairs(lighting:GetChildren()) do
+                if effect:IsA("PostEffect") then
+                    originalSettings.effects[effect] = effect.Enabled
+                end
+            end
+
+            -- Terapkan pengaturan boost
+            lighting.GlobalShadows = false
+            lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
+            pcall(function() userSettings.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+            for _, effect in ipairs(lighting:GetChildren()) do
+                if effect:IsA("PostEffect") then
+                    effect.Enabled = false
+                end
+            end
+            isFpsBoosted = true
+        elseif not enable and isFpsBoosted then
+            -- Kembalikan pengaturan asli
+            if originalSettings.globalShadows ~= nil then lighting.GlobalShadows = originalSettings.globalShadows end
+            if originalSettings.fogEnd ~= nil then lighting.FogEnd = originalSettings.fogEnd end -- Hapus pemeriksaan isNoFogEnabled
+            if originalSettings.qualityLevel ~= nil then pcall(function() userSettings.Rendering.QualityLevel = originalSettings.qualityLevel end) end
+            if originalSettings.effects then
+                for effect, wasEnabled in pairs(originalSettings.effects) do
+                    if effect and effect.Parent then effect.Enabled = wasEnabled end
+                end
+            end
+            isFpsBoosted = false
+            originalSettings = {} -- Hapus pengaturan yang disimpan
+        end
+    end
+
+    local freezeToggle = Instance.new("TextButton", settingPanel)
+    freezeToggle.Size = UDim2.new(1, -20, 0, 30)
+    freezeToggle.Position = UDim2.new(0, 10, 0, 35)
+    freezeToggle.Text = "Freeze While Fishing: ON"
+    freezeToggle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    freezeToggle.TextColor3 = Color3.new(1,1,1)
+    freezeToggle.MouseButton1Click:Connect(function()
+        config.FreezeWhileFishing = not config.FreezeWhileFishing
+        freezeToggle.Text = "Freeze While Fishing: " .. (config.FreezeWhileFishing and "ON" or "OFF")
+    end)
+
+    local fpsBox = Instance.new("TextBox", settingPanel)
+    fpsBox.Size = UDim2.new(1, -20, 0, 30)
+    fpsBox.Position = UDim2.new(0, 10, 0, 70)
+    fpsBox.Text = tostring(config.fpsCap)
+    fpsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    fpsBox.TextColor3 = Color3.new(1,1,1)
+    fpsBox.ClearTextOnFocus = false
+    fpsBox.FocusLost:Connect(function()
+        local v = tonumber(fpsBox.Text)
+        if v then
+            config.fpsCap = v
+            pcall(function() setfpscap(v) end)
+        end
+    end)
+
+    local fpsBoostBtn = Instance.new("TextButton", settingPanel)
+    fpsBoostBtn.Size = UDim2.new(1, -20, 0, 30)
+    fpsBoostBtn.Position = UDim2.new(0, 10, 0, 105)
+    fpsBoostBtn.Text = "🚀 FPS Boost: OFF"
+    fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    fpsBoostBtn.TextColor3 = Color3.new(1,1,1)
+    fpsBoostBtn.Font = Enum.Font.SourceSansBold
+    fpsBoostBtn.TextSize = 14
+    fpsBoostBtn.Parent = settingPanel
+
+    fpsBoostBtn.MouseButton1Click:Connect(function()
+        isFpsBoosted = not isFpsBoosted
+        toggleFpsBoost(isFpsBoosted)
+        if isFpsBoosted then
+            fpsBoostBtn.Text = "🚀 FPS Boost: ON"
+            fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        else
+            fpsBoostBtn.Text = "🚀 FPS Boost: OFF"
+            fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end)
+
+    -- Update CanvasSize untuk panel yang diubah menjadi ScrollingFrame
+    task.wait()
+    for _, panel in ipairs({playerPanel, miscPanel}) do
+        local layout = panel:FindFirstChildOfClass("UIListLayout")
+        if layout then panel.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y) end
+    end
+
+    --------------------------------------------------------------------
+    -- FUNGSI GLOBAL
+    --------------------------------------------------------------------
+    local function stopAllFeatures()
+        -- Stop Auto Fishing
+        if AutoFishing then
+            AutoFishing = false
+            startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+            freezeCharacter(false)
+        end
+
+        -- Stop Flying
+        if isFlying then
+            toggleFly(false)
+            flyToggleBtn.Text = "✈️ Fly: OFF"
+            flyToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+
+        -- Stop Noclip
+        if isNoclipping then
+            toggleNoclip(false)
+            noclipToggleBtn.Text = "🧱 Noclip: OFF"
+            noclipToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+
+        -- Stop Infinite Jump
+        if isInfiniteJumpEnabled then
+            toggleInfiniteJump(false)
+            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
+            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+        -- Stop ESP
+        if isEspEnabled then
+            toggleEsp(false)
+            isEspEnabled = false
+            espToggleBtn.Text = "ESP: OFF"
+        end
+
+        -- Stop Spectate
+        if spectating then
+            StopSpectate()
+        end
+
+        -- Stop FPS Boost
+        if isFpsBoosted then
+            toggleFpsBoost(false)
+            fpsBoostBtn.Text = "🚀 FPS Boost: OFF"
+            fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+
+        -- Stop Always Day
+        if isAlwaysDayEnabled then
+            toggleAlwaysDay(false)
+        end
+
+        -- Stop No Fog
+        if isNoFogEnabled then
+            toggleNoFog(false)
+        end
+
+    end
+
+    -- Connect Spectate Buttons
+    toggleSpectateBtn.MouseButton1Click:Connect(function()
+        if spectating then StopSpectate() else StartSpectate() end
+    end)
+
+    PrevButton.MouseButton1Click:Connect(function()
+        if not spectating then return end
+        UpdateSpectateList() -- Refresh the list of available players
+        if #spectateList > 0 then
+            SetSpectateTarget(spectateIndex - 1)
+        else
+            -- No one is available anymore, so stop spectating
+            StopSpectate()
+        end
+    end)
+    NextButton.MouseButton1Click:Connect(function()
+        if not spectating then return end
+        UpdateSpectateList() -- Refresh the list of available players
+        if #spectateList > 0 then
+            SetSpectateTarget(spectateIndex + 1)
+        else
+            -- No one is available anymore, so stop spectating
+            StopSpectate()
+        end
+    end)
+    ExitButton.MouseButton1Click:Connect(StopSpectate)
+
+    CopyButton.MouseButton1Click:Connect(function()
+        if spectating and currentTarget then
+            NameLabel.Text = "Copied!"
+            task.wait(1)
+            if currentTarget then NameLabel.Text = currentTarget.Name end
+        end
+    end)
+
+    closeGuiBtn.MouseButton1Click:Connect(function()
+        stopAllFeatures()
+        gui.Enabled = false
+    end)
+
+    --------------------------------------------------------------------
+    -- SAVE & LOAD GUI POSITION
+    --------------------------------------------------------------------
+    local function saveGuiPosition()
+        pcall(function()
+            local pos = mainFrame.Position
+            local posData = {
+                X_Scale = pos.X.Scale, X_Offset = pos.X.Offset,
+                Y_Scale = pos.Y.Scale, Y_Offset = pos.Y.Offset
+            }
+            gui:SetAttribute("GuiPosition", HttpService:JSONEncode(posData))
+
+            -- Simpan pengaturan pengguna
+            local userSettings = {
+                fpsCap = config.fpsCap,
+                freezeWhileFishing = config.FreezeWhileFishing,
+                autoSell = autoSell,
+                fpsBoostEnabled = isFpsBoosted,
+                flySpeed = flySpeed,
+                walkSpeed = currentWalkSpeed,
+                jumpPower = currentJumpPower,
+                infiniteJump = isInfiniteJumpEnabled
+            }
+            gui:SetAttribute("UserSettings", HttpService:JSONEncode(userSettings))
+        end)
+    end
+
+    local function loadGuiPosition()
+        pcall(function()
+            local data = gui:GetAttribute("GuiPosition")
+            if data and typeof(data) == "string" and data ~= "" then
+                local decoded = HttpService:JSONDecode(data)
+                if decoded then mainFrame.Position = UDim2.new(decoded.X_Scale, decoded.X_Offset, decoded.Y_Scale, decoded.Y_Offset) end
+            end
+
+            -- Muat pengaturan pengguna
+            local settingsData = gui:GetAttribute("UserSettings")
+            if settingsData and typeof(settingsData) == "string" and settingsData ~= "" then
+                local decodedSettings = HttpService:JSONDecode(settingsData)
+                if decodedSettings then
+                    -- Terapkan pengaturan yang dimuat
+                    config.fpsCap = decodedSettings.fpsCap or config.fpsCap
+                    pcall(function() setfpscap(config.fpsCap) end)
+                    config.FreezeWhileFishing = decodedSettings.freezeWhileFishing ~= nil and decodedSettings.freezeWhileFishing or config.FreezeWhileFishing
+                    autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell
+                    flySpeed = decodedSettings.flySpeed or flySpeed
+                    currentWalkSpeed = decodedSettings.walkSpeed or currentWalkSpeed
+                    currentJumpPower = decodedSettings.jumpPower or currentJumpPower
+                    isInfiniteJumpEnabled = decodedSettings.infiniteJump or false
+
+                    -- Terapkan preferensi FPS Boost (tetapi tidak mengaktifkan jika game baru dimulai)
+                    local savedFpsBoostEnabled = decodedSettings.fpsBoostEnabled ~= nil and decodedSettings.fpsBoostEnabled or false
+                    if savedFpsBoostEnabled then
+                        isFpsBoosted = false -- Reset state before toggling
+                        toggleFpsBoost(true) -- Aktifkan kembali boost jika sebelumnya aktif
+                    end
+                end
+            end
+        end)
+    end
+
+    TeleportButton.MouseButton1Click:Connect(function()
+        if spectating and currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local localChar = LocalPlayer.Character
+            local targetHrp = currentTarget.Character.HumanoidRootPart
+            if localChar and localChar:FindFirstChild("HumanoidRootPart") and targetHrp then
+                -- Hitung posisi 5 stud di belakang target, relatif terhadap arah hadap mereka
+                local targetPosition = targetHrp.Position
+                localChar.HumanoidRootPart.CFrame = CFrame.new(targetPosition)
+                NameLabel.Text = "Teleported!"
+            end
+            task.wait(1)
+            if currentTarget then NameLabel.Text = currentTarget.Name end
+        end
+    end)
+
+    -- Muat posisi GUI saat skrip dimulai
+    loadGuiPosition()
+    loadLokasi() -- Panggil loadLokasi setelah GUI diparent dan atribut dimuat
+
+    -- Perbarui teks tombol dan label yang bergantung pada state yang dimuat
+    freezeToggle.Text = "Freeze While Fishing: " .. (config.FreezeWhileFishing and "ON" or "OFF")
+    sellBtn.Text = "Auto Sell: " .. (autoSell and "ON" or "OFF")
+    espToggleBtn.Text = "ESP: " .. (isEspEnabled and "ON" or "OFF")
+    toggleSpectateBtn.Text = "Spectate: " .. (spectating and "ON" or "OFF")
+
+    fpsBox.Text = tostring(config.fpsCap)
+    fpsBoostBtn.Text = "🚀 FPS Boost: " .. (isFpsBoosted and "ON" or "OFF")
+    speedLabel.Text = "Speed: " .. flySpeed
+    wsLabel.Text = "Speed: " .. currentWalkSpeed
+    jpLabel.Text = "Jump: " .. currentJumpPower
+    if isInfiniteJumpEnabled then
+        infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON"
+        infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        toggleInfiniteJump(true)
+    end
+
+    -- Pastikan properti karakter diterapkan setelah memuat
+    applyCharacterProperties()
+
+    -- Initial Spectate Setup
+    Players.PlayerAdded:Connect(UpdateSpectateList)
+    Players.PlayerRemoving:Connect(UpdateSpectateList)
+    UpdateSpectateList()
+
+    -- Simpan posisi GUI saat pemain keluar
+    game:BindToClose(saveGuiPosition)
+    -- ...existing code...
+
+    -- Penjaga GUI (Anti-Hilang)
+    RunService.Heartbeat:Connect(function()
+        if gui and gui.Parent ~= game:GetService("CoreGui") then
+            gui.Parent = game:GetService("CoreGui")
+        end
+    end)
+
+    -- Tambahkan UIListLayout ke playerPanel agar semua elemen tersusun otomatis
+    local walkSpeedControlFrame = Instance.new("Frame", playerPanel)
+    walkSpeedControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    walkSpeedControlFrame.BackgroundTransparency = 1
+
+    local wsListLayout = Instance.new("UIListLayout", walkSpeedControlFrame)
+    wsListLayout.FillDirection = Enum.FillDirection.Horizontal
+    wsListLayout.Padding = UDim.new(0, 5)
+
+    local wsDownBtn = Instance.new("TextButton", walkSpeedControlFrame)
+    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0);
+    wsDownBtn.Text = "-";
+    wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80);
+    wsDownBtn.TextColor3 = Color3.new(1,1,1);
+    wsDownBtn.Font = Enum.Font.SourceSansBold;
+    wsDownBtn.TextSize = 20;
+
+    local wsLabel = Instance.new("TextLabel", walkSpeedControlFrame)
+    wsLabel.Size = UDim2.new(0.4, -5, 1, 0)
+    wsLabel.Text = "Speed: " .. currentWalkSpeed
+    wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    wsLabel.TextColor3 = Color3.new(1,1,1)
+    wsLabel.Font = Enum.Font.SourceSans
+    wsLabel.TextSize = 14
+
+    local wsUpBtn = Instance.new("TextButton", walkSpeedControlFrame)
+    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
+    wsUpBtn.Text = "+"
+    wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    wsUpBtn.TextColor3 = Color3.new(1,1,1)
+    wsUpBtn.Font = Enum.Font.SourceSansBold
+    wsUpBtn.TextSize = 20
+
+    local wsBox = Instance.new("TextBox", walkSpeedControlFrame)
+    wsBox.Size = UDim2.new(0.3, -10, 1, 0)
+    wsBox.PlaceholderText = "Custom"
+    wsBox.Text = ""
+    wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    wsBox.TextColor3 = Color3.new(1,1,1)
+    wsBox.ClearTextOnFocus = false
+    wsBox.Font = Enum.Font.SourceSans
+    wsBox.TextSize = 14
+
+    local function updateWalkSpeedDisplay() wsLabel.Text = "Speed: " .. currentWalkSpeed end
+    wsDownBtn.MouseButton1Click:Connect(function() currentWalkSpeed = math.max(0, currentWalkSpeed - 5) updateWalkSpeedDisplay() applyCharacterProperties() end)
+    wsUpBtn.MouseButton1Click:Connect(function() currentWalkSpeed = currentWalkSpeed + 5 updateWalkSpeedDisplay() applyCharacterProperties() end)
+    wsBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newSpeed = tonumber(wsBox.Text) if newSpeed and newSpeed >= 0 then currentWalkSpeed = newSpeed updateWalkSpeedDisplay() applyCharacterProperties() end wsBox.Text = "" end end)
+
+    -- JumpPower UI
+    local jumpPowerControlFrame = Instance.new("Frame", playerPanel)
+    jumpPowerControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    jumpPowerControlFrame.BackgroundTransparency = 1
+
+    local jpListLayout = Instance.new("UIListLayout", jumpPowerControlFrame)
+    jpListLayout.FillDirection = Enum.FillDirection.Horizontal
+    jpListLayout.Padding = UDim.new(0, 5)
+
+    local jpDownBtn = Instance.new("TextButton", jumpPowerControlFrame)
+    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0)
+    jpDownBtn.Text = "-"
+    jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+    jpDownBtn.TextColor3 = Color3.new(1,1,1)
+    jpDownBtn.Font = Enum.Font.SourceSansBold
+    jpDownBtn.TextSize = 20
+
+    local jpLabel = Instance.new("TextLabel", jumpPowerControlFrame)
+    jpLabel.Size = UDim2.new(0.4, -5, 1, 0)
+    jpLabel.Text = "Jump: " .. currentJumpPower
+    jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    jpLabel.TextColor3 = Color3.new(1,1,1)
+    jpLabel.Font = Enum.Font.SourceSans
+    jpLabel.TextSize = 14
+
+    local jpUpBtn = Instance.new("TextButton", jumpPowerControlFrame)
+    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
+    jpUpBtn.Text = "+"
+    jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    jpUpBtn.TextColor3 = Color3.new(1,1,1)
+    jpUpBtn.Font = Enum.Font.SourceSansBold
+    jpUpBtn.TextSize = 20
+
+    local jpBox = Instance.new("TextBox", jumpPowerControlFrame)
+    jpBox.Size = UDim2.new(0.3, -10, 1, 0)
+    jpBox.PlaceholderText = "Custom"
+    jpBox.Text = ""
+    jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    jpBox.TextColor3 = Color3.new(1,1,1)
+    jpBox.ClearTextOnFocus = false
+    jpBox.Font = Enum.Font.SourceSans
+    jpBox.TextSize = 14
+
+    local function updateJumpPowerDisplay() jpLabel.Text = "Jump: " .. currentJumpPower end
+    jpDownBtn.MouseButton1Click:Connect(function() currentJumpPower = math.max(0, currentJumpPower - 10) updateJumpPowerDisplay() applyCharacterProperties() end)
+    jpUpBtn.MouseButton1Click:Connect(function() currentJumpPower = currentJumpPower + 10 updateJumpPowerDisplay() applyCharacterProperties() end)
+    jpBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newPower = tonumber(jpBox.Text) if newPower and newPower >= 0 then currentJumpPower = newPower updateJumpPowerDisplay() applyCharacterProperties() end jpBox.Text = "" end end)
+
+    -- Infinite Jump
+    local isInfiniteJumpEnabled = false
+    local infiniteJumpConnection = nil
+
+    local function onJumpRequest()
+        if isInfiniteJumpEnabled then
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end
+
+    local function toggleInfiniteJump(enable)
+        isInfiniteJumpEnabled = enable
+        if enable then
+            if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+            infiniteJumpConnection = UIS.JumpRequest:Connect(onJumpRequest)
+        else
+            if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection = nil end
+        end
+    end
+
+    local infiniteJumpToggleBtn = Instance.new("TextButton", playerPanel)
+    infiniteJumpToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
+    infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1)
+    infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold
+    infiniteJumpToggleBtn.TextSize = 14
+
+    infiniteJumpToggleBtn.MouseButton1Click:Connect(function()
+        isInfiniteJumpEnabled = not isInfiniteJumpEnabled
+        toggleInfiniteJump(isInfiniteJumpEnabled)
+        if isInfiniteJumpEnabled then
+            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON"
+            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        else
+            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
+            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end)
+
+    -- ...existing code...
