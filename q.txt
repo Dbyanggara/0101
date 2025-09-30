@@ -747,6 +747,21 @@
     -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
+    --// Observer untuk Shake UI
+    --// Pendekatan ini lebih andal daripada memeriksa di dalam Heartbeat loop.
+    --// Ia akan langsung memicu fungsi shake() saat UI terdeteksi.
+    local function setupShakeObserver()
+        local shake_ui = PlayerGui:FindFirstChild("shakeui")
+        if shake_ui then
+            shake_ui.ChildAdded:Connect(function(child)
+                -- Jika tombol muncul dan AutoFishing aktif, panggil shake.
+                if child.Name == "safezone" and AutoFishing then
+                    task.wait(0.05) -- Beri jeda singkat agar tombol sepenuhnya siap
+                    shake()
+                end
+            end)
+        end
+    end
     --// Perbaikan Fungsi Shake
     --// Logika dioptimalkan untuk eksekusi yang sangat cepat dengan menghilangkan `task.wait()`
     --// dan menyederhanakan simulasi input untuk menyelesaikan mini-game secara instan.
@@ -804,6 +819,9 @@
     startBtn.TextSize = 16
     startBtn.Parent = fishingPanel
 
+    -- Panggil observer sekali saat skrip dimuat
+    setupShakeObserver()
+
     local fishingConnection = nil
     local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir
     startBtn.MouseButton1Click:Connect(function()
@@ -833,15 +851,12 @@
                     local reelUI = PlayerGui:FindFirstChild("reel")
                     local shakeUI = PlayerGui:FindFirstChild("shakeui")
 
-					-- LOGIKA BARU YANG LEBIH STABIL DAN CERDAS
-					-- Jika UI reel atau shake terdeteksi, panggil reel() dan trigger shake bila perlu.
-					if reelUI or shakeUI then
+					-- LOGIKA BARU: Fokus pada reel. Shake ditangani oleh observer.
+					-- Jika UI reel terdeteksi, panggil reel().
+					if reelUI then
 						lastActionTick = tick()
 						reel()
-						if shakeUI then
-							shake()
-						end
-					else
+					elseif not shakeUI then -- Hanya cast jika tidak ada UI reel atau shake
                         -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
                         -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
                         if tick() - lastActionTick > 0.3 then
