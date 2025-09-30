@@ -824,6 +824,7 @@
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             freezeCharacter(false)
+            fishingState = "idle" -- Reset state untuk memastikan tidak ada loop yang berjalan
         end
     end)
 
@@ -2048,6 +2049,7 @@
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             freezeCharacter(false)
+            fishingState = "idle"
         end
 
         -- Stop Flying
