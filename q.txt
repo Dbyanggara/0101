@@ -595,12 +595,21 @@
             pcall(function() rod.events.cast:FireServer(1) end)
 
             -- Instant cast by firing at the player's position
+            -- LOGIKA INSTANT CAST: Langsung lemparkan umpan ke bawah pemain.
+            -- Ini akan melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Fallback: Mengirim posisi tepat di bawah pemain untuk membuat umpan jatuh instan,
-                -- melewati animasi lemparan. Menggunakan satu panggilan lebih efisien.
+                -- Modifikasi: Mengirim posisi tepat di bawah pemain untuk membuat umpan jatuh instan,
+                -- melewati animasi lemparan.
                 pcall(function() rod.events.cast:FireServer(hrp.Position - Vector3.new(0, 5, 0)) end)
+                -- LOGIKA BARU: Langsung tembakkan event 'cast' dengan posisi target.
+                -- Ini adalah metode paling efektif untuk melewati animasi lemparan.
+                -- Posisi target adalah 5 stud di bawah kaki karakter.
+                -- Tentukan posisi target tepat 5 stud di bawah kaki karakter.
+                local targetPosition = hrp.Position - Vector3.new(0, 5, 0)
+                pcall(function() rod.events.cast:FireServer(targetPosition) end)
+                rod.events.cast:FireServer(targetPosition)
             end
         end
     end
@@ -681,55 +690,40 @@
 
     -- reel / tarik ikan
     local function reel()
-        -- Metode 1: Instant catch via manipulasi UI (paling cepat jika berhasil)
-        local success, result = pcall(function()
-            local reel_ui = PlayerGui:FindFirstChild("reel")
-            if not reel_ui then return false end
-            local reel_bar = reel_ui:FindFirstChild("bar")
-            if not reel_bar then return false end
-            local reel_client = reel_bar:FindFirstChild("reel")
-            if not reel_client
-            then return false end
+        -- METODE BARU YANG DISEMPURNAKAN: Mencari beberapa kemungkinan event reel secara agresif
+        -- dan memanggilnya untuk mendapatkan reel instan sejati, bahkan sebelum UI muncul.
+        local reelEvents = {}
+        local eventNames = {"reelfinished", "reel", "catch", "finish", "ReelFinished", "CatchFish"}
 
-            if reel_client.Disabled then reel_client.Disabled = false end
-
-            local update_colors = getsenv(reel_client).UpdateColors
-            if update_colors then
-                setupvalue(update_colors, 1, 100)
-                local reelEvent = ReplicatedStorage:FindFirstChild("events", true) and ReplicatedStorage.events:FindFirstChild("reelfinished")
-                if reelEvent then
-                    reelEvent:FireServer(getupvalue(update_colors, 1), true)
-                end
-                attemptAutoSell()
-                return true
+        -- Cari event di ReplicatedStorage
+        local rsEventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
+        if rsEventsFolder then
+            for _, name in ipairs(eventNames) do
+                local ev = rsEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
             end
-            return false
-        end)
-
-        if success and result then return end -- Jika metode 1 berhasil, hentikan
-
-        -- Metode 2: Fallback dengan memanggil event 'reelfinished' secara langsung
-        local reelEvent = ReplicatedStorage:FindFirstChild("reelfinished", true)
-        if not reelEvent then
-            local eventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
-            if eventsFolder then reelEvent = eventsFolder:FindFirstChild("reelfinished") end
         end
 
-        if reelEvent then
-            -- Coba beberapa argumen umum
-            pcall(function() reelEvent:FireServer(100, true) end)
-            pcall(function() reelEvent:FireServer(true) end)
-            attemptAutoSell()
-            return
-        end
-
+        -- Cari juga event di dalam tool pancing (fallback)
         local rod = findRod()
-        local eventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
-        local reelEvent = eventsFolder and (eventsFolder:FindFirstChild("reelfinished") or eventsFolder:FindFirstChild("ReelFinished"))
-        if reelEvent then
-            pcall(function() reelEvent:FireServer(100, true) end)
-            pcall(function() reelEvent:FireServer(true) end)
+        local toolEventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
+        if toolEventsFolder then
+            for _, name in ipairs(eventNames) do
+                local ev = toolEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
+            end
+        end
+
+        if #reelEvents > 0 then
+            -- Coba panggil semua event yang ditemukan dengan beberapa argumen umum
+            for _, reelEvent in ipairs(reelEvents) do
+                pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
+                pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
+                pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
+                pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
+            end
             attemptAutoSell()
+            return -- Hentikan eksekusi setelah mencoba semua event
         end
     end
 
@@ -743,26 +737,29 @@
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
                     if AutoFishing then
-                        task.wait(0.03) reel()
+                        reel()
                     end
                 end)
             end
         end
     end
 
+    -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
+    enableInstantCatchHook()
+
     local function shake()
-		local shake_ui = PlayerGui:FindFirstChild("shakeui")
-		if shake_ui then
-			local safezone = shake_ui:FindFirstChild("safezone")
-			local button = safezone and safezone:FindFirstChild("button")
-			if button and button.Visible then
-				if config.ShakeAlwaysCenter then
-					local size = config.ShakeButtonSize
-					button.Size = UDim2.new(0, size, 0, size)
-					button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-				end
-				-- Logika klik yang disempurnakan untuk PC dan Mobile
-				local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+        local shake_ui = PlayerGui:FindFirstChild("shakeui")
+        if shake_ui then
+            local safezone = shake_ui:FindFirstChild("safezone")
+            local button = safezone and safezone:FindFirstChild("button")
+            if button and button.Visible then
+                if config.ShakeAlwaysCenter then
+                    local size = config.ShakeButtonSize
+                    button.Size = UDim2.new(0, size, 0, size)
+                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+                end
+                -- Logika klik yang disempurnakan untuk PC dan Mobile
+                local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
 				if UIS.TouchEnabled then
 					-- Untuk Mobile: gunakan SendTouchEvent (press/release) bila tersedia; fallback ke mouse
 					local canSendTouch = typeof(VIM.SendTouchEvent) == "function"
@@ -778,36 +775,20 @@
 						end
 					end)
 				else
-					-- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
-					-- Menaikkan jumlah klik untuk mempercepat shake
+                    -- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
+                    -- Menaikkan jumlah klik untuk mempercepat shake
 					for i = 1, 160 do
 						VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
 						VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
-					end
-				end
-			end
-		end
-    end
-
-    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
-
-    -- Modifikasi hook untuk mengintegrasikan dengan state machine
-    local function enableInstantCatchHook()
-        local eventsFolder = ReplicatedStorage:FindFirstChild("events")
-        if not eventsFolder then return end
-        local possibleEvents = {"reelstarted", "bite", "hooked", "fishbitten", "hook", "caught"}
-
-        for _, name in ipairs(possibleEvents) do
-            local ev = eventsFolder:FindFirstChild(name)
-            if ev and ev:IsA("RemoteEvent") then
-                ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then reel() end -- Hapus jeda untuk kecepatan maksimal
-                end)
+                    end
+                end
             end
         end
     end
 
-    enableInstantCatchHook() -- Panggil fungsi hook yang sudah dimodifikasi
+    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
+
+
 
     -- UI isi panel fishing
     local startBtn = Instance.new("TextButton")
@@ -849,17 +830,19 @@
                     local reelUI = PlayerGui:FindFirstChild("reel")
                     local shakeUI = PlayerGui:FindFirstChild("shakeui")
 
-                    if reelUI and reelUI.Enabled then
-                        lastActionTick = tick()
-                        reel()
-                    elseif shakeUI and shakeUI.Enabled then
-                        lastActionTick = tick()
-                        shake()
-                    else
-                        -- Hanya cast jika sudah lebih dari 1 detik sejak aksi terakhir (reel/shake)
-                        -- untuk mencegah cast instan setelah menangkap ikan.
-                        if tick() - lastActionTick > 1 then
-                        cast()
+					-- LOGIKA BARU YANG LEBIH STABIL DAN CERDAS
+					-- Jika UI reel atau shake terdeteksi, panggil reel() dan trigger shake bila perlu.
+					if reelUI or shakeUI then
+						lastActionTick = tick()
+						reel()
+						if shakeUI then
+							shake()
+						end
+					else
+                        -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
+                        -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
+                        if tick() - lastActionTick > 0.3 then
+                            cast()
                         end
                     end
                 else
@@ -1296,6 +1279,60 @@
 
     infiniteJumpToggleBtn.MouseButton1Click:Connect(function() isInfiniteJumpEnabled = not isInfiniteJumpEnabled toggleInfiniteJump(isInfiniteJumpEnabled) if isInfiniteJumpEnabled then infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end end)
 
+    -- Camera Distance UI (Set Jarak)
+    local camDistControlFrame = Instance.new("Frame", playerPanel)
+    camDistControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    camDistControlFrame.BackgroundTransparency = 1
+
+    local cdListLayout = Instance.new("UIListLayout", camDistControlFrame); cdListLayout.FillDirection = Enum.FillDirection.Horizontal; cdListLayout.Padding = UDim.new(0, 5); cdListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local cdLabel = Instance.new("TextLabel", camDistControlFrame); cdLabel.Size = UDim2.new(0.4, -5, 1, 0); cdLabel.Text = "Set Distance:"; cdLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdLabel.TextColor3 = Color3.new(1,1,1); cdLabel.Font = Enum.Font.SourceSans; cdLabel.TextSize = 14
+
+    local cdBox = Instance.new("TextBox", camDistControlFrame)
+    cdBox.Size = UDim2.new(0.4, -10, 1, 0); cdBox.PlaceholderText = "Jarak"; cdBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdBox.TextColor3 = Color3.new(1,1,1); cdBox.ClearTextOnFocus = false; cdBox.Font = Enum.Font.SourceSans; cdBox.TextSize = 14
+
+    local cdSetBtn = Instance.new("TextButton", camDistControlFrame)
+    cdSetBtn.Size = UDim2.new(0.2, 0, 1, 0); cdSetBtn.Text = "Set"; cdSetBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180); cdSetBtn.TextColor3 = Color3.new(1,1,1); cdSetBtn.Font = Enum.Font.SourceSansBold; cdSetBtn.TextSize = 14
+
+    cdSetBtn.MouseButton1Click:Connect(function()
+        local distance = tonumber(cdBox.Text)
+        if not distance or distance < 0 then return end
+
+        -- Logika untuk memindahkan kamera ke jarak tertentu
+        local originalMin = LocalPlayer.CameraMinZoomDistance
+        local originalMax = LocalPlayer.CameraMaxZoomDistance
+        if originalMax < distance then originalMax = distance end
+
+        LocalPlayer.CameraMaxZoomDistance = distance
+        LocalPlayer.CameraMinZoomDistance = distance
+        task.wait() -- Tunggu satu frame agar kamera "pindah" ke posisi baru
+        LocalPlayer.CameraMaxZoomDistance = originalMax
+        LocalPlayer.CameraMinZoomDistance = originalMin -- Kembalikan min zoom ke nilai aslinya
+    end)
+
+    -- POV Toggle
+    local isPovEnabled = false
+    local povConnection = nil
+    local povToggleBtn = Instance.new("TextButton", playerPanel)
+    povToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    povToggleBtn.Text = "Enable POV Zoom: OFF"
+    povToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    povToggleBtn.TextColor3 = Color3.new(1,1,1)
+    povToggleBtn.Font = Enum.Font.SourceSansBold
+    povToggleBtn.TextSize = 14
+
+    povToggleBtn.MouseButton1Click:Connect(function()
+        isPovEnabled = not isPovEnabled
+        povToggleBtn.Text = "Enable POV Zoom: " .. (isPovEnabled and "ON" or "OFF")
+        povToggleBtn.BackgroundColor3 = isPovEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+        if isPovEnabled and not (povConnection and povConnection.Connected) then
+            povConnection = RunService.RenderStepped:Connect(function() LocalPlayer.CameraMinZoomDistance = 0.5 end)
+        elseif not isPovEnabled and (povConnection and povConnection.Connected) then
+            povConnection:Disconnect()
+            povConnection = nil
+        end
+    end)
+
     --------------------------------------------------------------------
     -- CHARACTER STATE HANDLER (Fixes features after death)
     --------------------------------------------------------------------
@@ -1701,6 +1738,67 @@
         createNewPublicServer()
     end)
 
+    -- No Fog Toggle (ON/OFF)
+    local isNoFogEnabled = false
+    local originalFogSettings = {}
+    local clonedAtmospheres = {}
+    local noFogConnection = nil
+    local noFogBtn = Instance.new("TextButton", miscPanel)
+    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
+    noFogBtn.Text = "🌫️ No Fog: OFF"
+    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noFogBtn.TextColor3 = Color3.new(1,1,1)
+    noFogBtn.Font = Enum.Font.SourceSansBold
+    noFogBtn.TextSize = 14
+
+    local function toggleNoFog(enable)
+        isNoFogEnabled = enable
+        local lighting = game:GetService("Lighting")
+
+        if enable then
+            -- Simpan pengaturan asli
+            originalFogSettings.FogStart = lighting.FogStart
+            originalFogSettings.FogEnd = lighting.FogEnd
+            clonedAtmospheres = {}
+
+            -- Kloning dan hancurkan objek Atmosphere
+            for _, v in ipairs(lighting:GetDescendants()) do
+                if v:IsA("Atmosphere") then
+                    table.insert(clonedAtmospheres, v:Clone())
+                    v:Destroy()
+                end
+            end
+
+            -- Mulai loop untuk memaksa kabut hilang
+            if not (noFogConnection and noFogConnection.Connected) then
+                noFogConnection = RunService.Stepped:Connect(function()
+                    pcall(function() lighting.FogEnd = 100000 end)
+                end)
+            end
+
+            noFogBtn.Text = "🌫️ No Fog: ON"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+        else
+            -- Hentikan loop
+            if noFogConnection and noFogConnection.Connected then
+                noFogConnection:Disconnect()
+                noFogConnection = nil
+            end
+
+            -- Kembalikan pengaturan asli
+            pcall(function() lighting.FogStart = originalFogSettings.FogStart end)
+            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
+            for _, cloned in ipairs(clonedAtmospheres) do cloned.Parent = lighting end
+
+            noFogBtn.Text = "🌫️ No Fog: OFF"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    noFogBtn.MouseButton1Click:Connect(function()
+        toggleNoFog(not isNoFogEnabled)
+    end)
+
     -- Spectate Toggle
     local toggleSpectateBtn = Instance.new("TextButton", miscPanel)
     toggleSpectateBtn.Size = UDim2.new(1, -10, 0, 30)
@@ -1843,6 +1941,35 @@
         end
     end
 
+    -- Always Day Toggle
+    local isAlwaysDayEnabled = false
+    local alwaysDayConnection = nil
+    local alwaysDayBtn = Instance.new("TextButton", miscPanel)
+    alwaysDayBtn.Size = UDim2.new(1, -10, 0, 30)
+    alwaysDayBtn.Text = "☀️ Always Day: OFF"
+    alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    alwaysDayBtn.TextColor3 = Color3.new(1,1,1)
+    alwaysDayBtn.Font = Enum.Font.SourceSansBold
+    alwaysDayBtn.TextSize = 14
+
+    local function toggleAlwaysDay(enable)
+        isAlwaysDayEnabled = enable
+        if enable and not (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection = RunService.Stepped:Connect(function()
+                pcall(function() game:GetService("Lighting").ClockTime = 14 end)
+            end)
+            alwaysDayBtn.Text = "☀️ Always Day: ON"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(240, 190, 50)
+        elseif not enable and (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection:Disconnect()
+            alwaysDayConnection = nil
+            alwaysDayBtn.Text = "☀️ Always Day: OFF"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
+
     --------------------------------------------------------------------
     -- SETTINGS PANEL
     --------------------------------------------------------------------
@@ -1867,7 +1994,7 @@
 
             -- Terapkan pengaturan boost
             lighting.GlobalShadows = false
-            lighting.FogEnd = 999999
+            lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             pcall(function() userSettings.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
             for _, effect in ipairs(lighting:GetChildren()) do
                 if effect:IsA("PostEffect") then
@@ -1878,7 +2005,7 @@
         elseif not enable and isFpsBoosted then
             -- Kembalikan pengaturan asli
             if originalSettings.globalShadows ~= nil then lighting.GlobalShadows = originalSettings.globalShadows end
-            if originalSettings.fogEnd ~= nil then lighting.FogEnd = originalSettings.fogEnd end
+            if originalSettings.fogEnd ~= nil then lighting.FogEnd = originalSettings.fogEnd end -- Hapus pemeriksaan isNoFogEnabled
             if originalSettings.qualityLevel ~= nil then pcall(function() userSettings.Rendering.QualityLevel = originalSettings.qualityLevel end) end
             if originalSettings.effects then
                 for effect, wasEnabled in pairs(originalSettings.effects) do
@@ -1994,6 +2121,17 @@
             fpsBoostBtn.Text = "🚀 FPS Boost: OFF"
             fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         end
+
+        -- Stop Always Day
+        if isAlwaysDayEnabled then
+            toggleAlwaysDay(false)
+        end
+
+        -- Stop No Fog
+        if isNoFogEnabled then
+            toggleNoFog(false)
+        end
+
     end
 
     -- Connect Spectate Buttons
@@ -2292,3 +2430,4 @@
     end)
 
     -- ...existing code...
+
