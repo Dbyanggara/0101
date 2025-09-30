@@ -737,7 +737,6 @@
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
                     if AutoFishing then
-                        shake()
                         reel()
                     end
                 end)
@@ -788,25 +787,27 @@
             button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
         end
 
+        -- Dapatkan posisi tengah tombol
+        local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+
         -- Jalankan di thread baru agar tidak mengganggu game
         task.spawn(function()
-            -- PERBAIKAN: Gabungkan logika PC dan Mobile menjadi satu.
-            -- Tentukan fungsi 'press' dan 'release' sekali berdasarkan platform.
-            local press, release
             if UIS.TouchEnabled then
-                press = function(pos) pcall(VIM.SendTouchEvent, VIM, pos, Enum.UserInputState.Begin, true, game) end
-                release = function(pos) pcall(VIM.SendTouchEvent, VIM, pos, Enum.UserInputState.End, true, game) end
+                -- Logika khusus untuk Mobile (Touch)
+                -- Menggunakan argumen yang benar untuk SendTouchEvent.
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.Begin, true, game) end)
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.End, true, game) end)
+                end
             else
-                press = function(pos) pcall(VIM.SendMouseButtonEvent, VIM, pos, Enum.UserInputType.MouseButton1, true, game) end
-                release = function(pos) pcall(VIM.SendMouseButtonEvent, VIM, pos, Enum.UserInputType.MouseButton1, false, game) end
-            end
-
-            -- Loop tunggal yang berfungsi untuk kedua platform.
-            for i = 1, 160 do
-                if not (button and button.Visible) then break end
-                local pos = Vector2.new(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2)
-                press(pos)
-                release(pos)
+                -- Logika untuk PC (Mouse Click)
+                -- Menggunakan argumen yang benar untuk SendMouseButtonEvent.
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, true, game) end)
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, false, game) end)
+                end
             end
         end)
     end
@@ -862,7 +863,7 @@
 					-- Jika UI reel terdeteksi, panggil reel().
 					if reelUI then
 						lastActionTick = tick()
-                        reel()
+						reel()
 					elseif not shakeUI then -- Hanya cast jika tidak ada UI reel atau shake
                         -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
                         -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
