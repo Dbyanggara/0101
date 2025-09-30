@@ -608,7 +608,11 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then task.wait(0.03); reel() end
+                    if AutoFishing then
+                        task.wait(0.03)
+                        shake() -- Panggil shake secara otomatis
+                        reel()
+                    end
                 end)
             end
         end
