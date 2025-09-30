@@ -619,10 +619,16 @@
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            if UIS.TouchEnabled then
+                createOrDestroyShakeButton(true)
+            end
             -- Logika auto-fish yang dihapus ada di sini
         else
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+            if not autoSell then -- Hanya hancurkan jika auto sell juga tidak aktif
+                createOrDestroyShakeButton(false)
+            end
             -- Logika untuk menghentikan auto-fish ada di sini
         end
         startBtn.Text = AutoFishing and "⏸ Stop" or "▶ Start"
@@ -636,9 +642,17 @@
     -- Fungsi utilitas untuk mensimulasikan klik, diambil dari contoh.
     local function simulate_click(x, y)
         pcall(function()
-            VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-            task.wait(0.01) -- Jeda sangat singkat antara tekan dan lepas
-            VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+            if UIS.TouchEnabled then
+                -- simulasi tap di layar untuk mobile
+                VIM:SendTouchEvent(x, y, 0, true, game, 1)
+                task.wait(0.05)
+                VIM:SendTouchEvent(x, y, 0, false, game, 1)
+            else
+                -- PC (mouse)
+                VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                task.wait(0.01)
+                VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+            end
         end)
     end
 
@@ -778,6 +792,9 @@
         else
             sellBtn.Text = "Auto Sell: OFF"
             sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            if not AutoFishing then -- Hanya hancurkan jika auto fishing juga tidak aktif
+                createOrDestroyShakeButton(false)
+            end
         end
     end)
 
