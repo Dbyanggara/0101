@@ -737,6 +737,7 @@
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
                     if AutoFishing then
+                        shake()
                         reel()
                     end
                 end)
