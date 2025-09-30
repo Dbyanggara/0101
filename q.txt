@@ -737,6 +737,8 @@
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
                     if AutoFishing then
+                        cast()
+                        shake()
                         reel()
                     end
                 end)
@@ -863,7 +865,9 @@
 					-- Jika UI reel terdeteksi, panggil reel().
 					if reelUI then
 						lastActionTick = tick()
-						reel()
+						cast()
+						shake()
+                        reel()
 					elseif not shakeUI then -- Hanya cast jika tidak ada UI reel atau shake
                         -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
                         -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
