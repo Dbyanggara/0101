@@ -16,7 +16,6 @@
     -- CONFIG
     local config = {
         fpsCap = 9999, -- Default FPS cap
-        FreezeWhileFishing = true,
         ShakeAlwaysCenter = true,
         ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
     }
@@ -751,7 +750,6 @@
         if AutoFishing then
             local rod = findRod()
             if rod then
-                if config.FreezeWhileFishing and AutoFishing then freezeCharacter(true) end
                 cast()
                 shake()
                 reel()
@@ -823,7 +821,6 @@
         else
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            freezeCharacter(false)
             fishingState = "idle" -- Reset state untuk memastikan tidak ada loop yang berjalan
         end
     end)
@@ -1985,17 +1982,6 @@
         end
     end
 
-    local freezeToggle = Instance.new("TextButton", settingPanel)
-    freezeToggle.Size = UDim2.new(1, -20, 0, 30)
-    freezeToggle.Position = UDim2.new(0, 10, 0, 35)
-    freezeToggle.Text = "Freeze While Fishing: ON"
-    freezeToggle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    freezeToggle.TextColor3 = Color3.new(1,1,1)
-    freezeToggle.MouseButton1Click:Connect(function()
-        config.FreezeWhileFishing = not config.FreezeWhileFishing
-        freezeToggle.Text = "Freeze While Fishing: " .. (config.FreezeWhileFishing and "ON" or "OFF")
-    end)
-
     local fpsBox = Instance.new("TextBox", settingPanel)
     fpsBox.Size = UDim2.new(1, -20, 0, 30)
     fpsBox.Position = UDim2.new(0, 10, 0, 70)
@@ -2048,7 +2034,6 @@
         if AutoFishing then
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            freezeCharacter(false)
             fishingState = "idle"
         end
 
@@ -2158,7 +2143,6 @@
             -- Simpan pengaturan pengguna
             local userSettings = {
                 fpsCap = config.fpsCap,
-                freezeWhileFishing = config.FreezeWhileFishing,
                 autoSell = autoSell,
                 fpsBoostEnabled = isFpsBoosted,
                 flySpeed = flySpeed,
@@ -2186,7 +2170,6 @@
                     -- Terapkan pengaturan yang dimuat
                     config.fpsCap = decodedSettings.fpsCap or config.fpsCap
                     pcall(function() setfpscap(config.fpsCap) end)
-                    config.FreezeWhileFishing = decodedSettings.freezeWhileFishing ~= nil and decodedSettings.freezeWhileFishing or config.FreezeWhileFishing
                     autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell                    flySpeed = decodedSettings.flySpeed or flySpeed
                     currentJumpPower = decodedSettings.jumpPower or currentJumpPower
                     isInfiniteJumpEnabled = decodedSettings.infiniteJump or false
@@ -2222,7 +2205,6 @@
     loadLokasi() -- Panggil loadLokasi setelah GUI diparent dan atribut dimuat
 
     -- Perbarui teks tombol dan label yang bergantung pada state yang dimuat
-    freezeToggle.Text = "Freeze While Fishing: " .. (config.FreezeWhileFishing and "ON" or "OFF")
     sellBtn.Text = "Auto Sell: " .. (autoSell and "ON" or "OFF")
     espToggleBtn.Text = "ESP: " .. (isEspEnabled and "ON" or "OFF")
     toggleSpectateBtn.Text = "Spectate: " .. (spectating and "ON" or "OFF")
