@@ -628,25 +628,23 @@
     end)
 
     -- Fungsi Shake dan Tombol Virtual untuk Mobile
-    -- Diperbaiki untuk mobile: Menggunakan Humanoid.MoveDirection, bukan SendKeyEvent.
-    -- PERBAIKAN FINAL: Menggunakan simulasi klik pada UI 'shakeui' sesuai contoh.
+    -- PERBAIKAN FINAL V2: Menggunakan VirtualInputManager untuk mensimulasikan klik mouse/sentuhan.
     local shakeButton = nil
     local function shake()
-        -- Fungsi ini tidak lagi bergantung pada AutoFishing, bisa dipanggil kapan saja.
         pcall(function()
             local shake_ui = PlayerGui:FindFirstChild("shakeui")
             if shake_ui then
                 local safezone = shake_ui:FindFirstChild("safezone")
                 local button = safezone and safezone:FindFirstChild("button")
 
-                if button and button.Visible then
-                    -- Simulate a click event on the button
-                    -- This is more reliable on mobile than SendMouseButtonEvent
-                    local args = {
-                        [1] = button.AbsolutePosition.X + (button.AbsoluteSize.X / 2),
-                        [2] = button.AbsolutePosition.Y + (button.AbsoluteSize.Y / 2)
-                    }
-                    button.MouseButton1Click:Fire(unpack(args))
+                if button and button.Visible and button.AbsoluteSize.X > 0 then
+                    local x = button.AbsolutePosition.X + (button.AbsoluteSize.X / 2)
+                    local y = button.AbsolutePosition.Y + (button.AbsoluteSize.Y / 2)
+
+                    -- Mensimulasikan event sentuhan/klik mouse langsung di koordinat tombol.
+                    VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)  -- Tekan
+                    task.wait(0.05) -- Jeda singkat
+                    VIM:SendMouseButtonEvent(x, y, 0, false, game, 1) -- Lepas
                 end
             end
         end)
