@@ -751,24 +751,42 @@
     end
 
     local function shake()
-        local shake_ui = PlayerGui:FindFirstChild("shakeui")
-        if shake_ui then
-            local safezone = shake_ui:FindFirstChild("safezone")
-            local button = safezone and safezone:FindFirstChild("button")
-            if button and button.Visible then
-                if config.ShakeAlwaysCenter then
-                    local size = config.ShakeButtonSize
-                    button.Size = UDim2.new(0, size, 0, size)
-                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-                end
-                -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
-                -- Mengurangi jumlah klik per frame untuk mengurangi lag. 3 kali biasanya cukup.
-                for i = 1, 3 do
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
-                end
-            end
-        end
+		local shake_ui = PlayerGui:FindFirstChild("shakeui")
+		if shake_ui then
+			local safezone = shake_ui:FindFirstChild("safezone")
+			local button = safezone and safezone:FindFirstChild("button")
+			if button and button.Visible then
+				if config.ShakeAlwaysCenter then
+					local size = config.ShakeButtonSize
+					button.Size = UDim2.new(0, size, 0, size)
+					button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+				end
+				-- Logika klik yang disempurnakan untuk PC dan Mobile
+				local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+				if UIS.TouchEnabled then
+					-- Untuk Mobile: gunakan SendTouchEvent (press/release) bila tersedia; fallback ke mouse
+					local canSendTouch = typeof(VIM.SendTouchEvent) == "function"
+					task.spawn(function()
+						for i = 1, 160 do
+							if canSendTouch then
+								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, true, game) end)
+								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, false, game) end)
+							else
+								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, true, game, 0) end)
+								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, false, game, 0) end)
+							end
+						end
+					end)
+				else
+					-- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
+					-- Menaikkan jumlah klik untuk mempercepat shake
+					for i = 1, 160 do
+						VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+						VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+					end
+				end
+			end
+		end
     end
 
     -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
