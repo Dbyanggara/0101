@@ -465,6 +465,12 @@
                     statusLabel.Text = "Status: Idle"
                     startBtn.Text = "Start"
                     startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
+
+                    -- FIX: Hentikan status duduk untuk mencegah karakter terpental
+                    local myChar = LocalPlayer.Character
+                    local hum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+                    if hum then hum.Sit = false end
+
                 end
 
                 startBtn.MouseButton1Click:Connect(function()
@@ -1773,12 +1779,15 @@
     local spectating = false
     local spectateIndex = 1
     local spectateList = {}
-    local currentTarget = nil
+    local currentTarget = nil -- Variabel untuk menyimpan target spectate saat ini
     local respawnConn
+
+    local isStickingToTarget = false -- State untuk fitur "tempel badan"
+    local stickConnection = nil -- Koneksi untuk loop "tempel badan"
 
     --=== Spectate GUI (inside Misc Panel) ===--
     local spectateControlsFrame = Instance.new("Frame", miscPanel)
-    spectateControlsFrame.Size = UDim2.new(1, -10, 0, 85)
+    spectateControlsFrame.Size = UDim2.new(1, -10, 0, 125) -- Perbesar frame untuk tombol baru
     spectateControlsFrame.BackgroundTransparency = 1
     spectateControlsFrame.Visible = false -- Hide by default
 
@@ -1823,6 +1832,20 @@
     local CopyButton = CreateSpectateButton("Copy", 45)
     local ExitButton = CreateSpectateButton("Exit", 45)
 
+    -- Tombol untuk "Tempel Badan" (Stick to Target)
+    local StickButton = Instance.new("TextButton", spectateControlsFrame)
+    StickButton.Size = UDim2.new(1, 0, 0, 35)
+    StickButton.Text = "Tempel Badan: OFF"
+    StickButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    StickButton.TextColor3 = Color3.new(1,1,1)
+    StickButton.Font = Enum.Font.SourceSansBold
+    StickButton.TextSize = 14
+
+    -- Atur LayoutOrder agar tombol ini muncul di bawah tombol lainnya
+    NameLabel.LayoutOrder = 1
+    ButtonFrame.LayoutOrder = 2
+    StickButton.LayoutOrder = 3
+
     --=== Spectate Functions ===--
     local function UpdateSpectateList()
         spectateList = {}
@@ -1834,6 +1857,39 @@
                 table.insert(spectateList, p)
             end
         end
+    end
+
+    local function stopSticking()
+        if stickConnection then
+            stickConnection:Disconnect()
+            stickConnection = nil
+        end
+        isStickingToTarget = false
+        StickButton.Text = "Tempel Badan: OFF"
+        StickButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end
+
+    local function startSticking()
+        if not currentTarget then return end
+        isStickingToTarget = true
+        StickButton.Text = "Tempel Badan: ON"
+        StickButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+
+        stickConnection = RunService.Heartbeat:Connect(function()
+            if not isStickingToTarget or not currentTarget or not currentTarget.Parent then
+                stopSticking()
+                return
+            end
+
+            local targetChar = currentTarget.Character
+            local targetHrp = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+            local localChar = LocalPlayer.Character
+            local localHrp = localChar and localChar:FindFirstChild("HumanoidRootPart")
+
+            if targetHrp and localHrp then
+                localHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 5) -- Posisi 5 stud di belakang target
+            end
+        end)
     end
 
     local function SetSpectateTarget(index)
@@ -1875,6 +1931,7 @@
     end
 
     local function StopSpectate()
+        stopSticking() -- Pastikan fitur "tempel badan" juga berhenti
         spectating = false
         NameLabel.Text = "Not Spectating"
         spectateControlsFrame.Visible = false
@@ -1905,6 +1962,10 @@
             end)
         end
     end
+
+    StickButton.MouseButton1Click:Connect(function()
+        if isStickingToTarget then stopSticking() else startSticking() end
+    end)
 
     -- Always Day Toggle
     local isAlwaysDayEnabled = false
