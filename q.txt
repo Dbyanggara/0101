@@ -769,14 +769,22 @@
 
         -- Jalankan di thread baru agar tidak mengganggu game
         task.spawn(function()
-            -- Tentukan metode input yang akan digunakan
-            local inputFunc = UIS.TouchEnabled and VIM.SendTouchEvent or VIM.SendMouseButtonEvent
-
-            -- Loop cepat tanpa `task.wait()` untuk menyelesaikan mini-game secara instan
-            for i = 1, 160 do
-                if not (button and button.Visible) then break end -- Berhenti jika tombol hilang
-                pcall(inputFunc, VIM, x, y, 0, true, game, 1)
-                pcall(inputFunc, VIM, x, y, 0, false, game, 1)
+            if UIS.TouchEnabled then
+                -- Logika khusus untuk Mobile (Touch)
+                -- Menggunakan argumen yang benar untuk SendTouchEvent.
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.Begin, true, game) end)
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.End, true, game) end)
+                end
+            else
+                -- Logika untuk PC (Mouse Click)
+                -- Menggunakan argumen yang benar untuk SendMouseButtonEvent.
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, true, game) end)
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, false, game) end)
+                end
             end
         end)
     end
