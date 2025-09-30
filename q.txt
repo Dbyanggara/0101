@@ -282,6 +282,7 @@
     createMenuButton("👤 Lokal Player", playerPanel)
     createMenuButton("🤡 Troll", trollPanel)
 
+
     -- Set initial colors for menu buttons
     for _, btn in ipairs(menuContainer:GetChildren()) do
         if btn:IsA("TextButton") then
@@ -289,6 +290,235 @@
             btn.TextColor3 = Color3.new(1,1,1)
         end
     end
+
+        -- Headsit: open a separate closeable GUI from the Troll panel
+        do
+            local function createHeadsitGui()
+                -- If already exists, do nothing (or recreate)
+                local existing = PlayerGui:FindFirstChild("HeadsitGui")
+                if existing then existing:Destroy() end
+
+                local sg = Instance.new("ScreenGui")
+                sg.Name = "HeadsitGui"
+                sg.ResetOnSpawn = false
+                sg.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui
+
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(0, 320, 0, 180)
+                frame.Position = UDim2.new(0.5, -160, 0.25, 0)
+                frame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+                frame.BorderSizePixel = 0
+                frame.Parent = sg
+
+                -- Make frame draggable
+                do
+                    local dragging, dragInput, dragStart, startPos
+                    frame.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                            dragging = true
+                            dragStart = input.Position
+                            startPos = frame.Position
+                            input.Changed:Connect(function()
+                                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                            end)
+                        end
+                    end)
+                    frame.InputChanged:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                            dragInput = input
+                        end
+                    end)
+                    UIS.InputChanged:Connect(function(input)
+                        if input == dragInput and dragging then
+                            local delta = input.Position - dragStart
+                            frame.Position = UDim2.new(
+                                startPos.X.Scale, startPos.X.Offset + delta.X,
+                                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                            )
+                        end
+                    end)
+                end
+
+                local closeBtn = Instance.new("TextButton", frame)
+                closeBtn.Size = UDim2.new(0, 30, 0, 24)
+                closeBtn.Position = UDim2.new(1, -35, 0, 5)
+                closeBtn.Text = "X"
+                closeBtn.Font = Enum.Font.SourceSansBold
+                closeBtn.TextSize = 16
+
+                local searchLabel = Instance.new("TextLabel", frame)
+                searchLabel.Size = UDim2.new(1, -20, 0, 20)
+                searchLabel.Position = UDim2.new(0, 10, 0, 10)
+                searchLabel.Text = "Cari pemain untuk headsit:"
+                searchLabel.BackgroundTransparency = 1
+                searchLabel.TextColor3 = Color3.new(1,1,1)
+
+                local searchBox = Instance.new("TextBox", frame)
+                searchBox.Size = UDim2.new(1, -20, 0, 30)
+                searchBox.Position = UDim2.new(0, 10, 0, 35)
+                searchBox.PlaceholderText = "Masukkan nama/nickname..."
+                searchBox.BackgroundColor3 = Color3.fromRGB(80,80,80)
+                searchBox.TextColor3 = Color3.new(1,1,1)
+
+                local suggestionLabel = Instance.new("TextLabel", frame)
+                suggestionLabel.Size = UDim2.new(1, -20, 0, 18)
+                suggestionLabel.Position = UDim2.new(0, 10, 0, 70)
+                suggestionLabel.BackgroundTransparency = 1
+                suggestionLabel.TextColor3 = Color3.fromRGB(180,180,180)
+                suggestionLabel.Font = Enum.Font.SourceSansItalic
+                suggestionLabel.TextSize = 12
+
+                local modeLabel = Instance.new("TextLabel", frame)
+                modeLabel.Size = UDim2.new(1, -20, 0, 18)
+                modeLabel.Position = UDim2.new(0, 10, 0, 90)
+                modeLabel.BackgroundTransparency = 1
+                modeLabel.TextColor3 = Color3.new(1,1,1)
+                modeLabel.Text = "Mode: Body (posisi relatif ke torso)"
+
+                local modeToggle = Instance.new("TextButton", frame)
+                modeToggle.Size = UDim2.new(0.5, -15, 0, 28)
+                modeToggle.Position = UDim2.new(0, 10, 0, 110)
+                modeToggle.Text = "Switch to Head"
+                modeToggle.BackgroundColor3 = Color3.fromRGB(120,120,120)
+                modeToggle.TextColor3 = Color3.new(1,1,1)
+                modeToggle.Font = Enum.Font.SourceSansBold
+
+                local startBtn = Instance.new("TextButton", frame)
+                startBtn.Size = UDim2.new(0.45, -10, 0, 28)
+                startBtn.Position = UDim2.new(0.55, -10, 0, 110)
+                startBtn.Text = "Start"
+                startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
+                startBtn.TextColor3 = Color3.new(1,1,1)
+                startBtn.Font = Enum.Font.SourceSansBold
+
+                local statusLabel = Instance.new("TextLabel", frame)
+                statusLabel.Size = UDim2.new(1, -20, 0, 20)
+                statusLabel.Position = UDim2.new(0, 10, 0, 145)
+                statusLabel.Text = "Status: Idle"
+                statusLabel.BackgroundTransparency = 1
+                statusLabel.TextColor3 = Color3.new(1,1,1)
+
+                -- Helpers
+                local function findPlayerByName(name)
+                    if not name or name == "" then return nil end
+                    name = name:lower()
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Name:lower():find(name) or (p.DisplayName and p.DisplayName:lower():find(name)) then
+                            return p
+                        end
+                    end
+                    return nil
+                end
+
+                local function getRootPart(char)
+                    if not char then return nil end
+                    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+                end
+
+                -- Autocomplete
+                local autocompleteDebounce = false
+                searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    if autocompleteDebounce then return end
+                    autocompleteDebounce = true
+                    task.spawn(function()
+                        task.wait(0.12)
+                        local txt = searchBox.Text or ""
+                        if #txt >= 3 then
+                            local lowered = txt:lower()
+                            local found = nil
+                            for _, p in ipairs(Players:GetPlayers()) do
+                                if p.Name:lower():find(lowered, 1, true) or (p.DisplayName and p.DisplayName:lower():find(lowered, 1, true)) then
+                                    found = p; break
+                                end
+                            end
+                            if found then
+                                suggestionLabel.Text = "Suggestion: " .. found.Name
+                                if found.Name:lower():sub(1, #txt) == txt:lower() then
+                                    searchBox.Text = found.Name
+                                    pcall(function() searchBox.CursorPosition = #found.Name + 1 end)
+                                end
+                            else
+                                suggestionLabel.Text = ""
+                            end
+                        else
+                            suggestionLabel.Text = ""
+                        end
+                        autocompleteDebounce = false
+                    end)
+                end)
+
+                local headMode = false
+                local headSitConn = nil
+                local currentTarget = nil
+
+                modeToggle.MouseButton1Click:Connect(function()
+                    headMode = not headMode
+                    modeLabel.Text = headMode and "Mode: Head (posisi relatif ke kepala)" or "Mode: Body (posisi relatif ke torso)"
+                    modeToggle.Text = headMode and "Switch to Body" or "Switch to Head"
+                end)
+
+                local function stopHeadSit()
+                    if headSitConn then headSitConn:Disconnect(); headSitConn = nil end
+                    currentTarget = nil
+                    statusLabel.Text = "Status: Idle"
+                    startBtn.Text = "Start"
+                    startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
+                end
+
+                startBtn.MouseButton1Click:Connect(function()
+                    if headSitConn then stopHeadSit(); return end
+                    local name = searchBox.Text
+                    local p = findPlayerByName(name)
+                    if not p then statusLabel.Text = "Status: Player not found"; return end
+                    if p == LocalPlayer then statusLabel.Text = "Status: Cannot target yourself"; return end
+                    local targetChar = p.Character
+                    local targetRoot = getRootPart(targetChar)
+                    if not targetRoot then statusLabel.Text = "Status: Target has no root part"; return end
+
+                    currentTarget = p
+                    statusLabel.Text = "Status: Target found - ready"
+                    startBtn.Text = "Stop"
+                    startBtn.BackgroundColor3 = Color3.fromRGB(180,80,80)
+
+                    headSitConn = RunService.Heartbeat:Connect(function()
+                        if not currentTarget or not Players:FindFirstChild(currentTarget.Name) then stopHeadSit(); return end
+                        local tchar = currentTarget.Character
+                        local troot = getRootPart(tchar)
+                        local myChar = LocalPlayer.Character
+                        local myRoot = getRootPart(myChar)
+                        local hum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+                        if not troot or not myRoot or not hum then stopHeadSit(); return end
+                        if hum then hum.Sit = true end
+                        local offset = headMode and CFrame.new(0, 1.6, 0.4) or CFrame.new(0, 1.0, 0.4)
+                        local targetCFrame = troot.CFrame * CFrame.Angles(0, math.rad(0), 0)
+                        myRoot.CFrame = targetCFrame * offset
+                    end)
+                end)
+
+                local charConn = LocalPlayer.CharacterRemoving:Connect(function() stopHeadSit() end)
+
+                closeBtn.MouseButton1Click:Connect(function()
+                    stopHeadSit()
+                    if charConn then charConn:Disconnect(); charConn = nil end
+                    if sg and sg.Parent then sg:Destroy() end
+                end)
+            end
+
+            -- Replace in-panel headsit controls with a single button that opens the separate GUI
+            local openHeadsitBtn = Instance.new("TextButton")
+            openHeadsitBtn.Size = UDim2.new(1, -20, 0, 35)
+            openHeadsitBtn.Position = UDim2.new(0, 10, 0, 35)
+            openHeadsitBtn.Text = "Headsit"
+            openHeadsitBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+            openHeadsitBtn.TextColor3 = Color3.new(1,1,1)
+            openHeadsitBtn.Font = Enum.Font.SourceSansBold
+            openHeadsitBtn.TextSize = 14
+            openHeadsitBtn.Parent = trollPanel
+
+            openHeadsitBtn.MouseButton1Click:Connect(function()
+                createHeadsitGui()
+            end)
+        end
 
         -- Headsit: open a separate closeable GUI from the Troll panel
         do
@@ -597,6 +827,7 @@
             -- Instant cast by firing at the player's position
             -- LOGIKA INSTANT CAST: Langsung lemparkan umpan ke bawah pemain.
             -- Ini akan melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
+            -- LOGIKA INSTANT CAST: Melempar pancing tepat di bawah karakter untuk melewati animasi.
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -607,9 +838,19 @@
                 -- Ini adalah metode paling efektif untuk melewati animasi lemparan.
                 -- Posisi target adalah 5 stud di bawah kaki karakter.
                 -- Tentukan posisi target tepat 5 stud di bawah kaki karakter.
+                -- Tentukan posisi target tepat di bawah kaki karakter.
+                -- LOGIKA INSTANT CAST: Melempar pancing tepat di bawah karakter untuk melewati animasi lemparan jauh.
                 local targetPosition = hrp.Position - Vector3.new(0, 5, 0)
                 pcall(function() rod.events.cast:FireServer(targetPosition) end)
+                -- Panggil event 'cast' dengan posisi target. Ini adalah metode paling efektif
+                -- untuk melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
                 rod.events.cast:FireServer(targetPosition)
+                pcall(function()
+                    rod.events.cast:FireServer(targetPosition)
+                end)
+            else
+                -- Fallback jika karakter tidak valid, coba cast biasa.
+                pcall(function() rod.events.cast:FireServer(1) end)
             end
         end
     end
@@ -644,6 +885,7 @@
         if not ev then return false end
         local id = ev:GetFullName()
         if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
+        if sellAttempted[id] and (tick() - sellAttempted[id] &lt; 1) then
             return false
         end
         sellAttempted[id] = tick()
@@ -691,39 +933,37 @@
     -- reel / tarik ikan
     local function reel()
         -- METODE BARU YANG DISEMPURNAKAN: Mencari beberapa kemungkinan event reel secara agresif
-        -- dan memanggilnya untuk mendapatkan reel instan sejati, bahkan sebelum UI muncul.
+        -- dan memanggilnya berulang kali untuk mendapatkan reel instan sejati.
         local reelEvents = {}
         local eventNames = {"reelfinished", "reel", "catch", "finish", "ReelFinished", "CatchFish"}
 
         -- Cari event di ReplicatedStorage
         local rsEventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
         if rsEventsFolder then
-            for _, name in ipairs(eventNames) do
-                local ev = rsEventsFolder:FindFirstChild(name)
-                if ev then table.insert(reelEvents, ev) end
-            end
+            for _, name in ipairs(eventNames) do local ev = rsEventsFolder:FindFirstChild(name) if ev then table.insert(reelEvents, ev) end end
         end
 
         -- Cari juga event di dalam tool pancing (fallback)
         local rod = findRod()
         local toolEventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
         if toolEventsFolder then
-            for _, name in ipairs(eventNames) do
-                local ev = toolEventsFolder:FindFirstChild(name)
-                if ev then table.insert(reelEvents, ev) end
-            end
+            for _, name in ipairs(eventNames) do local ev = toolEventsFolder:FindFirstChild(name) if ev then table.insert(reelEvents, ev) end end
         end
 
+        -- Jika event relevan ditemukan, panggil semuanya
         if #reelEvents > 0 then
-            -- Coba panggil semua event yang ditemukan dengan beberapa argumen umum
-            for _, reelEvent in ipairs(reelEvents) do
-                pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
-                pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
-                pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
-                pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
+            -- Panggil semua event yang ditemukan secara berulang kali untuk memastikan server merespons.
+            for i = 1, 15 do -- Mengurangi jumlah pengulangan agar tidak terlalu agresif
+            -- Panggil semua event yang ditemukan secara berulang kali dalam satu frame untuk memastikan server merespons.
+            for i = 1, 30 do -- Menaikkan jumlah pengulangan untuk akselerasi maksimal
+                for _, reelEvent in ipairs(reelEvents) do
+                    pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
+                    pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
+                    pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
+                    pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
+                end
             end
             attemptAutoSell()
-            return -- Hentikan eksekusi setelah mencoba semua event
         end
     end
 
@@ -736,8 +976,10 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
+                    -- LOGIKA BARU: Gunakan task.spawn() untuk eksekusi instan tanpa jeda.
                     if AutoFishing then
-                        reel()
+                        -- Menjalankan reel() di thread terpisah untuk menghilangkan delay sekecil apa pun.
+                        task.spawn(reel)
                     end
                 end)
             end
@@ -747,76 +989,31 @@
     -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
-    --// Observer Bertingkat untuk Shake UI (Lebih Andal)
-    --// 1. Memantau PlayerGui untuk kemunculan 'shakeui'.
-    --// 2. Setelah 'shakeui' muncul, memantau 'shakeui' untuk kemunculan 'safezone'.
-    --// Ini memastikan deteksi berfungsi bahkan jika UI dibuat setelah skrip berjalan.
-    local function setupShakeObserver()
-        local function onShakeUiAdded(shake_ui)
-            -- Pastikan ini adalah UI yang benar sebelum menghubungkan listener
-            if not (shake_ui and shake_ui:IsA("ScreenGui") and shake_ui.Name == "shakeui") then return end
+    -- The main game loop is now handled within the Start button's click event
+    -- using a more responsive Heartbeat connection.
 
-            shake_ui.ChildAdded:Connect(function(child)
-                if child.Name == "safezone" and AutoFishing then
-                    task.wait(0.05) -- Jeda singkat agar UI sepenuhnya siap
-                    shake()
-                end
-            end)
-        end
 
-        -- Hubungkan ke ChildAdded dari PlayerGui untuk mendeteksi saat 'shakeui' dibuat.
-        PlayerGui.ChildAdded:Connect(onShakeUiAdded)
-
-        -- Jika 'shakeui' sudah ada saat skrip dimuat, langsung hubungkan listener.
-        if PlayerGui:FindFirstChild("shakeui") then onShakeUiAdded(PlayerGui:FindFirstChild("shakeui")) end
-    end
-    --// Perbaikan Fungsi Shake
-    --// Logika dioptimalkan untuk eksekusi yang sangat cepat dengan menghilangkan `task.wait()`
-    --// dan menyederhanakan simulasi input untuk menyelesaikan mini-game secara instan.
     local function shake()
-        if not VIM then return end
-
         local shake_ui = PlayerGui:FindFirstChild("shakeui")
-        local button = shake_ui and shake_ui:FindFirstChild("safezone") and shake_ui.safezone:FindFirstChild("button")
-
-        if not (button and button.Visible) then return end
-
-        if config.ShakeAlwaysCenter then
-            local size = config.ShakeButtonSize
-            button.Size = UDim2.new(0, size, 0, size)
-            button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-        end
-
-        -- Dapatkan posisi tengah tombol
-        local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
-
-        -- Jalankan di thread baru agar tidak mengganggu game
-        task.spawn(function()
-            if UIS.TouchEnabled then
-                -- Logika khusus untuk Mobile (Touch)
-                -- Menggunakan argumen yang benar untuk SendTouchEvent.
-                for i = 1, 160 do
-                    if not (button and button.Visible) then break end
-                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.Begin, true, game) end)
-                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.End, true, game) end)
+        if shake_ui then
+            local safezone = shake_ui:FindFirstChild("safezone")
+            local button = safezone and safezone:FindFirstChild("button")
+            if button and button.Visible then
+                if config.ShakeAlwaysCenter then
+                    local size = config.ShakeButtonSize
+                    button.Size = UDim2.new(0, size, 0, size)
+                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
                 end
-            else
-                -- Logika untuk PC (Mouse Click)
-                -- Menggunakan argumen yang benar untuk SendMouseButtonEvent.
-                for i = 1, 160 do
-                    if not (button and button.Visible) then break end
-                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, true, game) end)
-                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, false, game) end)
+                -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
+                for i = 1, 15 do
+                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
                 end
             end
-        end)
+        end
     end
 
-    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
-
-
-
-    -- UI isi panel fishing
+    -- UI untuk panel fishing
     local startBtn = Instance.new("TextButton")
     startBtn.Size = UDim2.new(1, -20, 0, 35)
     startBtn.Position = UDim2.new(0, 10, 0, 35)
@@ -827,11 +1024,8 @@
     startBtn.TextSize = 16
     startBtn.Parent = fishingPanel
 
-    -- Panggil observer sekali saat skrip dimuat
-    setupShakeObserver()
-
     local fishingConnection = nil
-    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir
+    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir untuk mencegah spam
     startBtn.MouseButton1Click:Connect(function()
         AutoFishing = not AutoFishing
         if AutoFishing then
@@ -841,7 +1035,6 @@
             if fishingConnection and fishingConnection.Connected then fishingConnection:Disconnect() end
             lastActionTick = 0 -- Reset timer saat dimulai
 
-            -- Use Heartbeat for a more responsive loop to catch UI changes faster, fixing the shake bug.
             fishingConnection = RunService.Heartbeat:Connect(function()
                 if not AutoFishing then
                     if fishingConnection and fishingConnection.Connected then
@@ -856,17 +1049,18 @@
                 if rod then
                     if config.FreezeWhileFishing then freezeCharacter(true) end
 
-                    local reelUI = PlayerGui:FindFirstChild("reel")
-                    local shakeUI = PlayerGui:FindFirstChild("shakeui")
-
-					-- LOGIKA BARU: Fokus pada reel. Shake ditangani oleh observer.
-					-- Jika UI reel terdeteksi, panggil reel().
-					if reelUI then
-						lastActionTick = tick()
-						reel()
-					elseif not shakeUI then -- Hanya cast jika tidak ada UI reel atau shake
-                        -- Jika TIDAK ada UI, berarti kita sedang tidak memancing atau baru saja selesai.
-                        -- Beri jeda singkat sebelum melempar pancing (cast) lagi untuk mencegah spam.
+                    local shake_ui = PlayerGui:FindFirstChild("shakeui")
+                    if shake_ui and shake_ui.Enabled then
+                        lastActionTick = tick()
+                        shake()
+                    elseif PlayerGui:FindFirstChild("reel") and PlayerGui.reel.Enabled then -- Cek minigame reel
+                        lastActionTick = tick() -- Perbarui timer saat reel
+                    elseif PlayerGui:FindFirstChild("reel") and PlayerGui.reel.Enabled then
+                        reel()
+                    elseif tick() - lastActionTick > 0.5 then -- Jika tidak ada minigame, coba cast
+                        cast()
+                        lastActionTick = tick() -- Perbarui timer setelah cast
+                    elseif tick() - lastActionTick > 0.5 then -- Cooldown untuk cast
                         if tick() - lastActionTick > 0.3 then
                             cast()
                         end
@@ -2022,6 +2216,7 @@
             lighting.GlobalShadows = false
             lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             pcall(function() userSettings.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+            lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             for _, effect in ipairs(lighting:GetChildren()) do
                 if effect:IsA("PostEffect") then
                     effect.Enabled = false
@@ -2313,145 +2508,6 @@
     RunService.Heartbeat:Connect(function()
         if gui and gui.Parent ~= game:GetService("CoreGui") then
             gui.Parent = game:GetService("CoreGui")
-        end
-    end)
-
-    -- Tambahkan UIListLayout ke playerPanel agar semua elemen tersusun otomatis
-    local walkSpeedControlFrame = Instance.new("Frame", playerPanel)
-    walkSpeedControlFrame.Size = UDim2.new(1, -20, 0, 30)
-    walkSpeedControlFrame.BackgroundTransparency = 1
-
-    local wsListLayout = Instance.new("UIListLayout", walkSpeedControlFrame)
-    wsListLayout.FillDirection = Enum.FillDirection.Horizontal
-    wsListLayout.Padding = UDim.new(0, 5)
-
-    local wsDownBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0);
-    wsDownBtn.Text = "-";
-    wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80);
-    wsDownBtn.TextColor3 = Color3.new(1,1,1);
-    wsDownBtn.Font = Enum.Font.SourceSansBold;
-    wsDownBtn.TextSize = 20;
-
-    local wsLabel = Instance.new("TextLabel", walkSpeedControlFrame)
-    wsLabel.Size = UDim2.new(0.4, -5, 1, 0)
-    wsLabel.Text = "Speed: " .. currentWalkSpeed
-    wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    wsLabel.TextColor3 = Color3.new(1,1,1)
-    wsLabel.Font = Enum.Font.SourceSans
-    wsLabel.TextSize = 14
-
-    local wsUpBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    wsUpBtn.Text = "+"
-    wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-    wsUpBtn.TextColor3 = Color3.new(1,1,1)
-    wsUpBtn.Font = Enum.Font.SourceSansBold
-    wsUpBtn.TextSize = 20
-
-    local wsBox = Instance.new("TextBox", walkSpeedControlFrame)
-    wsBox.Size = UDim2.new(0.3, -10, 1, 0)
-    wsBox.PlaceholderText = "Custom"
-    wsBox.Text = ""
-    wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    wsBox.TextColor3 = Color3.new(1,1,1)
-    wsBox.ClearTextOnFocus = false
-    wsBox.Font = Enum.Font.SourceSans
-    wsBox.TextSize = 14
-
-    local function updateWalkSpeedDisplay() wsLabel.Text = "Speed: " .. currentWalkSpeed end
-    wsDownBtn.MouseButton1Click:Connect(function() currentWalkSpeed = math.max(0, currentWalkSpeed - 5) updateWalkSpeedDisplay() applyCharacterProperties() end)
-    wsUpBtn.MouseButton1Click:Connect(function() currentWalkSpeed = currentWalkSpeed + 5 updateWalkSpeedDisplay() applyCharacterProperties() end)
-    wsBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newSpeed = tonumber(wsBox.Text) if newSpeed and newSpeed >= 0 then currentWalkSpeed = newSpeed updateWalkSpeedDisplay() applyCharacterProperties() end wsBox.Text = "" end end)
-
-    -- JumpPower UI
-    local jumpPowerControlFrame = Instance.new("Frame", playerPanel)
-    jumpPowerControlFrame.Size = UDim2.new(1, -20, 0, 30)
-    jumpPowerControlFrame.BackgroundTransparency = 1
-
-    local jpListLayout = Instance.new("UIListLayout", jumpPowerControlFrame)
-    jpListLayout.FillDirection = Enum.FillDirection.Horizontal
-    jpListLayout.Padding = UDim.new(0, 5)
-
-    local jpDownBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    jpDownBtn.Text = "-"
-    jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-    jpDownBtn.TextColor3 = Color3.new(1,1,1)
-    jpDownBtn.Font = Enum.Font.SourceSansBold
-    jpDownBtn.TextSize = 20
-
-    local jpLabel = Instance.new("TextLabel", jumpPowerControlFrame)
-    jpLabel.Size = UDim2.new(0.4, -5, 1, 0)
-    jpLabel.Text = "Jump: " .. currentJumpPower
-    jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    jpLabel.TextColor3 = Color3.new(1,1,1)
-    jpLabel.Font = Enum.Font.SourceSans
-    jpLabel.TextSize = 14
-
-    local jpUpBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    jpUpBtn.Text = "+"
-    jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-    jpUpBtn.TextColor3 = Color3.new(1,1,1)
-    jpUpBtn.Font = Enum.Font.SourceSansBold
-    jpUpBtn.TextSize = 20
-
-    local jpBox = Instance.new("TextBox", jumpPowerControlFrame)
-    jpBox.Size = UDim2.new(0.3, -10, 1, 0)
-    jpBox.PlaceholderText = "Custom"
-    jpBox.Text = ""
-    jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    jpBox.TextColor3 = Color3.new(1,1,1)
-    jpBox.ClearTextOnFocus = false
-    jpBox.Font = Enum.Font.SourceSans
-    jpBox.TextSize = 14
-
-    local function updateJumpPowerDisplay() jpLabel.Text = "Jump: " .. currentJumpPower end
-    jpDownBtn.MouseButton1Click:Connect(function() currentJumpPower = math.max(0, currentJumpPower - 10) updateJumpPowerDisplay() applyCharacterProperties() end)
-    jpUpBtn.MouseButton1Click:Connect(function() currentJumpPower = currentJumpPower + 10 updateJumpPowerDisplay() applyCharacterProperties() end)
-    jpBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newPower = tonumber(jpBox.Text) if newPower and newPower >= 0 then currentJumpPower = newPower updateJumpPowerDisplay() applyCharacterProperties() end jpBox.Text = "" end end)
-
-    -- Infinite Jump
-    local isInfiniteJumpEnabled = false
-    local infiniteJumpConnection = nil
-
-    local function onJumpRequest()
-        if isInfiniteJumpEnabled then
-            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end
-
-    local function toggleInfiniteJump(enable)
-        isInfiniteJumpEnabled = enable
-        if enable then
-            if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-            infiniteJumpConnection = UIS.JumpRequest:Connect(onJumpRequest)
-        else
-            if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection = nil end
-        end
-    end
-
-    local infiniteJumpToggleBtn = Instance.new("TextButton", playerPanel)
-    infiniteJumpToggleBtn.Size = UDim2.new(1, -20, 0, 30)
-    infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
-    infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1)
-    infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold
-    infiniteJumpToggleBtn.TextSize = 14
-
-    infiniteJumpToggleBtn.MouseButton1Click:Connect(function()
-        isInfiniteJumpEnabled = not isInfiniteJumpEnabled
-        toggleInfiniteJump(isInfiniteJumpEnabled)
-        if isInfiniteJumpEnabled then
-            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON"
-            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-        else
-            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
-            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         end
     end)
 
