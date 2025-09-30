@@ -628,19 +628,23 @@
     end)
 
     -- Fungsi Shake dan Tombol Virtual untuk Mobile
+    -- Diperbaiki untuk mobile: Menggunakan Humanoid.MoveDirection, bukan SendKeyEvent.
     local shakeButton = nil
     local function shake()
         if not AutoFishing then return end
         pcall(function()
-            local cam = workspace.CurrentCamera
-            local originalCFrame = cam.CFrame
-            VIM:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-            task.wait(0.05)
-            VIM:SendKeyEvent(true, Enum.KeyCode.S, false, game)
-            task.wait(0.05)
-            VIM:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-            VIM:SendKeyEvent(false, Enum.KeyCode.S, false, game)
-            cam.CFrame = originalCFrame
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+
+            -- Gerakkan karakter maju sedikit
+            hum.MoveDirection = Vector3.new(0, 0, -1)
+            task.wait(0.1)
+            -- Gerakkan karakter mundur sedikit
+            hum.MoveDirection = Vector3.new(0, 0, 1)
+            task.wait(0.1)
+            -- Hentikan gerakan
+            hum.MoveDirection = Vector3.new(0, 0, 0)
         end)
     end
 
@@ -754,6 +758,7 @@
             sellBtn.Text = "Auto Sell: ON"
             sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
             collectSellCandidates()
+            -- Tombol shake hanya muncul jika Auto Sell aktif
             createOrDestroyShakeButton(true) -- Tampilkan tombol shake di mobile
         else
             sellBtn.Text = "Auto Sell: OFF"
