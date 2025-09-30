@@ -1958,67 +1958,6 @@
         createNewPublicServer()
     end)
 
-    -- No Fog Toggle (ON/OFF)
-    local isNoFogEnabled = false
-    local originalFogSettings = {}
-    local clonedAtmospheres = {}
-    local noFogConnection = nil
-    local noFogBtn = Instance.new("TextButton", miscPanel)
-    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
-    noFogBtn.Text = "🌫️ No Fog: OFF"
-    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    noFogBtn.TextColor3 = Color3.new(1,1,1)
-    noFogBtn.Font = Enum.Font.SourceSansBold
-    noFogBtn.TextSize = 14
-
-    local function toggleNoFog(enable)
-        isNoFogEnabled = enable
-        local lighting = game:GetService("Lighting")
-
-        if enable then
-            -- Simpan pengaturan asli
-            originalFogSettings.FogStart = lighting.FogStart
-            originalFogSettings.FogEnd = lighting.FogEnd
-            clonedAtmospheres = {}
-
-            -- Kloning dan hancurkan objek Atmosphere
-            for _, v in ipairs(lighting:GetDescendants()) do
-                if v:IsA("Atmosphere") then
-                    table.insert(clonedAtmospheres, v:Clone())
-                    v:Destroy()
-                end
-            end
-
-            -- Mulai loop untuk memaksa kabut hilang
-            if not (noFogConnection and noFogConnection.Connected) then
-                noFogConnection = RunService.Stepped:Connect(function()
-                    pcall(function() lighting.FogEnd = 100000 end)
-                end)
-            end
-
-            noFogBtn.Text = "🌫️ No Fog: ON"
-            noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
-        else
-            -- Hentikan loop
-            if noFogConnection and noFogConnection.Connected then
-                noFogConnection:Disconnect()
-                noFogConnection = nil
-            end
-
-            -- Kembalikan pengaturan asli
-            pcall(function() lighting.FogStart = originalFogSettings.FogStart end)
-            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
-            for _, cloned in ipairs(clonedAtmospheres) do cloned.Parent = lighting end
-
-            noFogBtn.Text = "🌫️ No Fog: OFF"
-            noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        end
-    end
-
-    noFogBtn.MouseButton1Click:Connect(function()
-        toggleNoFog(not isNoFogEnabled)
-    end)
-
     -- Spectate Toggle
     local toggleSpectateBtn = Instance.new("TextButton", miscPanel)
     toggleSpectateBtn.Size = UDim2.new(1, -10, 0, 30)
@@ -2190,6 +2129,35 @@
 
     alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
 
+    -- No Fog Toggle (ON/OFF)
+    local isNoFogEnabled = false
+    local originalFogSettings = {}
+    local clonedAtmospheres = {}
+    local noFogConnection = nil
+    local noFogBtn = Instance.new("TextButton", miscPanel)
+    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
+    noFogBtn.Text = "🌫️ No Fog: OFF"
+    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noFogBtn.TextColor3 = Color3.new(1,1,1)
+    noFogBtn.Font = Enum.Font.SourceSansBold
+    noFogBtn.TextSize = 14
+
+    local function toggleNoFog(enable)
+        isNoFogEnabled = enable
+        local lighting = game:GetService("Lighting")
+        if enable then
+            originalFogSettings.FogEnd = lighting.FogEnd
+            if not (noFogConnection and noFogConnection.Connected) then
+                noFogConnection = RunService.Stepped:Connect(function() pcall(function() lighting.FogEnd = 100000 end) end)
+            end
+            noFogBtn.Text = "🌫️ No Fog: ON"; noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+        else
+            if noFogConnection and noFogConnection.Connected then noFogConnection:Disconnect(); noFogConnection = nil end
+            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
+            noFogBtn.Text = "🌫️ No Fog: OFF"; noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+    noFogBtn.MouseButton1Click:Connect(function() toggleNoFog(not isNoFogEnabled) end)
     --------------------------------------------------------------------
     -- SETTINGS PANEL
     --------------------------------------------------------------------
