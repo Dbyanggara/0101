@@ -282,7 +282,6 @@
     createMenuButton("👤 Lokal Player", playerPanel)
     createMenuButton("🤡 Troll", trollPanel)
 
-
     -- Set initial colors for menu buttons
     for _, btn in ipairs(menuContainer:GetChildren()) do
         if btn:IsA("TextButton") then
@@ -290,235 +289,6 @@
             btn.TextColor3 = Color3.new(1,1,1)
         end
     end
-
-        -- Headsit: open a separate closeable GUI from the Troll panel
-        do
-            local function createHeadsitGui()
-                -- If already exists, do nothing (or recreate)
-                local existing = PlayerGui:FindFirstChild("HeadsitGui")
-                if existing then existing:Destroy() end
-
-                local sg = Instance.new("ScreenGui")
-                sg.Name = "HeadsitGui"
-                sg.ResetOnSpawn = false
-                sg.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui
-
-                local frame = Instance.new("Frame")
-                frame.Size = UDim2.new(0, 320, 0, 180)
-                frame.Position = UDim2.new(0.5, -160, 0.25, 0)
-                frame.BackgroundColor3 = Color3.fromRGB(50,50,50)
-                frame.BorderSizePixel = 0
-                frame.Parent = sg
-
-                -- Make frame draggable
-                do
-                    local dragging, dragInput, dragStart, startPos
-                    frame.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                            dragging = true
-                            dragStart = input.Position
-                            startPos = frame.Position
-                            input.Changed:Connect(function()
-                                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-                            end)
-                        end
-                    end)
-                    frame.InputChanged:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                            dragInput = input
-                        end
-                    end)
-                    UIS.InputChanged:Connect(function(input)
-                        if input == dragInput and dragging then
-                            local delta = input.Position - dragStart
-                            frame.Position = UDim2.new(
-                                startPos.X.Scale, startPos.X.Offset + delta.X,
-                                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-                            )
-                        end
-                    end)
-                end
-
-                local closeBtn = Instance.new("TextButton", frame)
-                closeBtn.Size = UDim2.new(0, 30, 0, 24)
-                closeBtn.Position = UDim2.new(1, -35, 0, 5)
-                closeBtn.Text = "X"
-                closeBtn.Font = Enum.Font.SourceSansBold
-                closeBtn.TextSize = 16
-
-                local searchLabel = Instance.new("TextLabel", frame)
-                searchLabel.Size = UDim2.new(1, -20, 0, 20)
-                searchLabel.Position = UDim2.new(0, 10, 0, 10)
-                searchLabel.Text = "Cari pemain untuk headsit:"
-                searchLabel.BackgroundTransparency = 1
-                searchLabel.TextColor3 = Color3.new(1,1,1)
-
-                local searchBox = Instance.new("TextBox", frame)
-                searchBox.Size = UDim2.new(1, -20, 0, 30)
-                searchBox.Position = UDim2.new(0, 10, 0, 35)
-                searchBox.PlaceholderText = "Masukkan nama/nickname..."
-                searchBox.BackgroundColor3 = Color3.fromRGB(80,80,80)
-                searchBox.TextColor3 = Color3.new(1,1,1)
-
-                local suggestionLabel = Instance.new("TextLabel", frame)
-                suggestionLabel.Size = UDim2.new(1, -20, 0, 18)
-                suggestionLabel.Position = UDim2.new(0, 10, 0, 70)
-                suggestionLabel.BackgroundTransparency = 1
-                suggestionLabel.TextColor3 = Color3.fromRGB(180,180,180)
-                suggestionLabel.Font = Enum.Font.SourceSansItalic
-                suggestionLabel.TextSize = 12
-
-                local modeLabel = Instance.new("TextLabel", frame)
-                modeLabel.Size = UDim2.new(1, -20, 0, 18)
-                modeLabel.Position = UDim2.new(0, 10, 0, 90)
-                modeLabel.BackgroundTransparency = 1
-                modeLabel.TextColor3 = Color3.new(1,1,1)
-                modeLabel.Text = "Mode: Body (posisi relatif ke torso)"
-
-                local modeToggle = Instance.new("TextButton", frame)
-                modeToggle.Size = UDim2.new(0.5, -15, 0, 28)
-                modeToggle.Position = UDim2.new(0, 10, 0, 110)
-                modeToggle.Text = "Switch to Head"
-                modeToggle.BackgroundColor3 = Color3.fromRGB(120,120,120)
-                modeToggle.TextColor3 = Color3.new(1,1,1)
-                modeToggle.Font = Enum.Font.SourceSansBold
-
-                local startBtn = Instance.new("TextButton", frame)
-                startBtn.Size = UDim2.new(0.45, -10, 0, 28)
-                startBtn.Position = UDim2.new(0.55, -10, 0, 110)
-                startBtn.Text = "Start"
-                startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
-                startBtn.TextColor3 = Color3.new(1,1,1)
-                startBtn.Font = Enum.Font.SourceSansBold
-
-                local statusLabel = Instance.new("TextLabel", frame)
-                statusLabel.Size = UDim2.new(1, -20, 0, 20)
-                statusLabel.Position = UDim2.new(0, 10, 0, 145)
-                statusLabel.Text = "Status: Idle"
-                statusLabel.BackgroundTransparency = 1
-                statusLabel.TextColor3 = Color3.new(1,1,1)
-
-                -- Helpers
-                local function findPlayerByName(name)
-                    if not name or name == "" then return nil end
-                    name = name:lower()
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(name) or (p.DisplayName and p.DisplayName:lower():find(name)) then
-                            return p
-                        end
-                    end
-                    return nil
-                end
-
-                local function getRootPart(char)
-                    if not char then return nil end
-                    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-                end
-
-                -- Autocomplete
-                local autocompleteDebounce = false
-                searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-                    if autocompleteDebounce then return end
-                    autocompleteDebounce = true
-                    task.spawn(function()
-                        task.wait(0.12)
-                        local txt = searchBox.Text or ""
-                        if #txt >= 3 then
-                            local lowered = txt:lower()
-                            local found = nil
-                            for _, p in ipairs(Players:GetPlayers()) do
-                                if p.Name:lower():find(lowered, 1, true) or (p.DisplayName and p.DisplayName:lower():find(lowered, 1, true)) then
-                                    found = p; break
-                                end
-                            end
-                            if found then
-                                suggestionLabel.Text = "Suggestion: " .. found.Name
-                                if found.Name:lower():sub(1, #txt) == txt:lower() then
-                                    searchBox.Text = found.Name
-                                    pcall(function() searchBox.CursorPosition = #found.Name + 1 end)
-                                end
-                            else
-                                suggestionLabel.Text = ""
-                            end
-                        else
-                            suggestionLabel.Text = ""
-                        end
-                        autocompleteDebounce = false
-                    end)
-                end)
-
-                local headMode = false
-                local headSitConn = nil
-                local currentTarget = nil
-
-                modeToggle.MouseButton1Click:Connect(function()
-                    headMode = not headMode
-                    modeLabel.Text = headMode and "Mode: Head (posisi relatif ke kepala)" or "Mode: Body (posisi relatif ke torso)"
-                    modeToggle.Text = headMode and "Switch to Body" or "Switch to Head"
-                end)
-
-                local function stopHeadSit()
-                    if headSitConn then headSitConn:Disconnect(); headSitConn = nil end
-                    currentTarget = nil
-                    statusLabel.Text = "Status: Idle"
-                    startBtn.Text = "Start"
-                    startBtn.BackgroundColor3 = Color3.fromRGB(70,130,70)
-                end
-
-                startBtn.MouseButton1Click:Connect(function()
-                    if headSitConn then stopHeadSit(); return end
-                    local name = searchBox.Text
-                    local p = findPlayerByName(name)
-                    if not p then statusLabel.Text = "Status: Player not found"; return end
-                    if p == LocalPlayer then statusLabel.Text = "Status: Cannot target yourself"; return end
-                    local targetChar = p.Character
-                    local targetRoot = getRootPart(targetChar)
-                    if not targetRoot then statusLabel.Text = "Status: Target has no root part"; return end
-
-                    currentTarget = p
-                    statusLabel.Text = "Status: Target found - ready"
-                    startBtn.Text = "Stop"
-                    startBtn.BackgroundColor3 = Color3.fromRGB(180,80,80)
-
-                    headSitConn = RunService.Heartbeat:Connect(function()
-                        if not currentTarget or not Players:FindFirstChild(currentTarget.Name) then stopHeadSit(); return end
-                        local tchar = currentTarget.Character
-                        local troot = getRootPart(tchar)
-                        local myChar = LocalPlayer.Character
-                        local myRoot = getRootPart(myChar)
-                        local hum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-                        if not troot or not myRoot or not hum then stopHeadSit(); return end
-                        if hum then hum.Sit = true end
-                        local offset = headMode and CFrame.new(0, 1.6, 0.4) or CFrame.new(0, 1.0, 0.4)
-                        local targetCFrame = troot.CFrame * CFrame.Angles(0, math.rad(0), 0)
-                        myRoot.CFrame = targetCFrame * offset
-                    end)
-                end)
-
-                local charConn = LocalPlayer.CharacterRemoving:Connect(function() stopHeadSit() end)
-
-                closeBtn.MouseButton1Click:Connect(function()
-                    stopHeadSit()
-                    if charConn then charConn:Disconnect(); charConn = nil end
-                    if sg and sg.Parent then sg:Destroy() end
-                end)
-            end
-
-            -- Replace in-panel headsit controls with a single button that opens the separate GUI
-            local openHeadsitBtn = Instance.new("TextButton")
-            openHeadsitBtn.Size = UDim2.new(1, -20, 0, 35)
-            openHeadsitBtn.Position = UDim2.new(0, 10, 0, 35)
-            openHeadsitBtn.Text = "Headsit"
-            openHeadsitBtn.BackgroundColor3 = Color3.fromRGB(100,100,100)
-            openHeadsitBtn.TextColor3 = Color3.new(1,1,1)
-            openHeadsitBtn.Font = Enum.Font.SourceSansBold
-            openHeadsitBtn.TextSize = 14
-            openHeadsitBtn.Parent = trollPanel
-
-            openHeadsitBtn.MouseButton1Click:Connect(function()
-                createHeadsitGui()
-            end)
-        end
 
         -- Headsit: open a separate closeable GUI from the Troll panel
         do
@@ -827,7 +597,6 @@
             -- Instant cast by firing at the player's position
             -- LOGIKA INSTANT CAST: Langsung lemparkan umpan ke bawah pemain.
             -- Ini akan melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
-            -- LOGIKA INSTANT CAST: Melempar pancing tepat di bawah karakter untuk melewati animasi.
             local char = LocalPlayer.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -838,19 +607,9 @@
                 -- Ini adalah metode paling efektif untuk melewati animasi lemparan.
                 -- Posisi target adalah 5 stud di bawah kaki karakter.
                 -- Tentukan posisi target tepat 5 stud di bawah kaki karakter.
-                -- Tentukan posisi target tepat di bawah kaki karakter.
-                -- LOGIKA INSTANT CAST: Melempar pancing tepat di bawah karakter untuk melewati animasi lemparan jauh.
                 local targetPosition = hrp.Position - Vector3.new(0, 5, 0)
                 pcall(function() rod.events.cast:FireServer(targetPosition) end)
-                -- Panggil event 'cast' dengan posisi target. Ini adalah metode paling efektif
-                -- untuk melewati animasi lemparan jauh dan membuat umpan langsung jatuh ke air.
                 rod.events.cast:FireServer(targetPosition)
-                pcall(function()
-                    rod.events.cast:FireServer(targetPosition)
-                end)
-            else
-                -- Fallback jika karakter tidak valid, coba cast biasa.
-                pcall(function() rod.events.cast:FireServer(1) end)
             end
         end
     end
@@ -885,7 +644,6 @@
         if not ev then return false end
         local id = ev:GetFullName()
         if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
-        if sellAttempted[id] and (tick() - sellAttempted[id] &lt; 1) then
             return false
         end
         sellAttempted[id] = tick()
@@ -931,43 +689,47 @@
     end
 
     -- reel / tarik ikan
+    -- reel / tarik ikan
     local function reel()
         -- METODE BARU YANG DISEMPURNAKAN: Mencari beberapa kemungkinan event reel secara agresif
-        -- dan memanggilnya berulang kali untuk mendapatkan reel instan sejati.
+        -- dan memanggilnya untuk mendapatkan reel instan sejati, bahkan sebelum UI muncul.
         local reelEvents = {}
         local eventNames = {"reelfinished", "reel", "catch", "finish", "ReelFinished", "CatchFish"}
 
         -- Cari event di ReplicatedStorage
         local rsEventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
         if rsEventsFolder then
-            for _, name in ipairs(eventNames) do local ev = rsEventsFolder:FindFirstChild(name) if ev then table.insert(reelEvents, ev) end end
+            for _, name in ipairs(eventNames) do
+                local ev = rsEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
+            end
         end
 
         -- Cari juga event di dalam tool pancing (fallback)
         local rod = findRod()
         local toolEventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
         if toolEventsFolder then
-            for _, name in ipairs(eventNames) do local ev = toolEventsFolder:FindFirstChild(name) if ev then table.insert(reelEvents, ev) end end
+            for _, name in ipairs(eventNames) do
+                local ev = toolEventsFolder:FindFirstChild(name)
+                if ev then table.insert(reelEvents, ev) end
+            end
         end
 
-        -- Jika event relevan ditemukan, panggil semuanya
         if #reelEvents > 0 then
-            -- Panggil semua event yang ditemukan secara berulang kali untuk memastikan server merespons.
-            for i = 1, 15 do -- Mengurangi jumlah pengulangan agar tidak terlalu agresif
-            -- Panggil semua event yang ditemukan secara berulang kali dalam satu frame untuk memastikan server merespons.
-            for i = 1, 30 do -- Menaikkan jumlah pengulangan untuk akselerasi maksimal
-                for _, reelEvent in ipairs(reelEvents) do
-                    pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
-                    pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
-                    pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
-                    pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
-                end
+            -- Coba panggil semua event yang ditemukan dengan beberapa argumen umum
+            for _, reelEvent in ipairs(reelEvents) do
+                pcall(function() reelEvent:FireServer(100, true) end) -- Argumen umum: persentase tinggi, sukses
+                pcall(function() reelEvent:FireServer(true) end)     -- Argumen umum: sukses
+                pcall(function() reelEvent:FireServer("success") end) -- Argumen umum: status string
+                pcall(function() reelEvent:FireServer() end)         -- Tanpa argumen
             end
             attemptAutoSell()
+            return -- Hentikan eksekusi setelah mencoba semua event
         end
     end
 
     local function enableInstantCatchHook()
+        -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
         local eventsFolder = ReplicatedStorage:FindFirstChild("events")
         if not eventsFolder then return end
         local possibleEvents = {"reelstarted", "bite", "hooked", "fishbitten", "hook", "caught"}
@@ -976,44 +738,70 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
-                    -- LOGIKA BARU: Gunakan task.spawn() untuk eksekusi instan tanpa jeda.
                     if AutoFishing then
-                        -- Menjalankan reel() di thread terpisah untuk menghilangkan delay sekecil apa pun.
-                        task.spawn(reel)
+                        reel()
                     end
                 end)
             end
         end
     end
 
-    -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
-    -- The main game loop is now handled within the Start button's click event
-    -- using a more responsive Heartbeat connection.
+    --// Observer untuk Shake UI (Lebih Andal)
+    local function setupShakeObserver()
+        local function onShakeUiAdded(shake_ui)
+            if not (shake_ui and shake_ui:IsA("ScreenGui") and shake_ui.Name == "shakeui") then return end
 
-
-    local function shake()
-        local shake_ui = PlayerGui:FindFirstChild("shakeui")
-        if shake_ui then
-            local safezone = shake_ui:FindFirstChild("safezone")
-            local button = safezone and safezone:FindFirstChild("button")
-            if button and button.Visible then
-                if config.ShakeAlwaysCenter then
-                    local size = config.ShakeButtonSize
-                    button.Size = UDim2.new(0, size, 0, size)
-                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+            shake_ui.ChildAdded:Connect(function(child)
+                if child.Name == "safezone" and AutoFishing then
+                    task.wait(0.05)
+                    shake()
                 end
-                -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
-                for i = 1, 15 do
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
-                end
-            end
+            end)
         end
+
+        PlayerGui.ChildAdded:Connect(onShakeUiAdded)
+
+        if PlayerGui:FindFirstChild("shakeui") then onShakeUiAdded(PlayerGui:FindFirstChild("shakeui")) end
     end
 
-    -- UI untuk panel fishing
+    local function shake()
+        if not VIM then return end
+
+        local shake_ui = PlayerGui:FindFirstChild("shakeui")
+        local button = shake_ui and shake_ui:FindFirstChild("safezone") and shake_ui.safezone:FindFirstChild("button")
+
+        if not (button and button.Visible) then return end
+
+        if config.ShakeAlwaysCenter then
+            local size = config.ShakeButtonSize or 120
+            button.Size = UDim2.new(0, size, 0, size)
+            button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+        end
+
+        local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
+
+        task.spawn(function()
+            if UIS.TouchEnabled then
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.Begin, true, game) end)
+                    pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.End, true, game) end)
+                end
+            else
+                for i = 1, 160 do
+                    if not (button and button.Visible) then break end
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, true, game) end)
+                    pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, false, game) end)
+                end
+            end
+        end)
+    end
+
+
+
+    -- UI isi panel fishing
     local startBtn = Instance.new("TextButton")
     startBtn.Size = UDim2.new(1, -20, 0, 35)
     startBtn.Position = UDim2.new(0, 10, 0, 35)
@@ -1024,17 +812,21 @@
     startBtn.TextSize = 16
     startBtn.Parent = fishingPanel
 
+    setupShakeObserver()
+
     local fishingConnection = nil
-    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir untuk mencegah spam
+    local lastActionTick = 0
     startBtn.MouseButton1Click:Connect(function()
         AutoFishing = not AutoFishing
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            lastActionTick = 0
 
             if fishingConnection and fishingConnection.Connected then fishingConnection:Disconnect() end
             lastActionTick = 0 -- Reset timer saat dimulai
 
+            -- Use Heartbeat for a more responsive loop to catch UI changes faster, fixing the shake bug.
             fishingConnection = RunService.Heartbeat:Connect(function()
                 if not AutoFishing then
                     if fishingConnection and fishingConnection.Connected then
@@ -1049,18 +841,13 @@
                 if rod then
                     if config.FreezeWhileFishing then freezeCharacter(true) end
 
-                    local shake_ui = PlayerGui:FindFirstChild("shakeui")
-                    if shake_ui and shake_ui.Enabled then
-                        lastActionTick = tick()
-                        shake()
-                    elseif PlayerGui:FindFirstChild("reel") and PlayerGui.reel.Enabled then -- Cek minigame reel
-                        lastActionTick = tick() -- Perbarui timer saat reel
-                    elseif PlayerGui:FindFirstChild("reel") and PlayerGui.reel.Enabled then
-                        reel()
-                    elseif tick() - lastActionTick > 0.5 then -- Jika tidak ada minigame, coba cast
-                        cast()
-                        lastActionTick = tick() -- Perbarui timer setelah cast
-                    elseif tick() - lastActionTick > 0.5 then -- Cooldown untuk cast
+                    local reelUI = PlayerGui:FindFirstChild("reel")
+                    local shakeUI = PlayerGui:FindFirstChild("shakeui")
+
+					if reelUI then
+						lastActionTick = tick()
+						reel()
+					elseif not shakeUI then
                         if tick() - lastActionTick > 0.3 then
                             cast()
                         end
@@ -1720,6 +1507,35 @@
         end)
     end
 
+    -- Always Day Toggle
+    local isAlwaysDayEnabled = false
+    local alwaysDayConnection = nil
+    local alwaysDayBtn = Instance.new("TextButton", miscPanel)
+    alwaysDayBtn.Size = UDim2.new(1, -10, 0, 30)
+    alwaysDayBtn.Text = "☀️ Always Day: OFF"
+    alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    alwaysDayBtn.TextColor3 = Color3.new(1,1,1)
+    alwaysDayBtn.Font = Enum.Font.SourceSansBold
+    alwaysDayBtn.TextSize = 14
+
+    local function toggleAlwaysDay(enable)
+        isAlwaysDayEnabled = enable
+        if enable and not (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection = RunService.Stepped:Connect(function()
+                pcall(function() game:GetService("Lighting").ClockTime = 14 end)
+            end)
+            alwaysDayBtn.Text = "☀️ Always Day: ON"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(240, 190, 50)
+        elseif not enable and (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection:Disconnect()
+            alwaysDayConnection = nil
+            alwaysDayBtn.Text = "☀️ Always Day: OFF"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
+
     --------------------------------------------------------------------
     -- MISC PANEL
     --------------------------------------------------------------------
@@ -1958,6 +1774,67 @@
         createNewPublicServer()
     end)
 
+    -- No Fog Toggle (ON/OFF)
+    local isNoFogEnabled = false
+    local originalFogSettings = {}
+    local clonedAtmospheres = {}
+    local noFogConnection = nil
+    local noFogBtn = Instance.new("TextButton", miscPanel)
+    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
+    noFogBtn.Text = "🌫️ No Fog: OFF"
+    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noFogBtn.TextColor3 = Color3.new(1,1,1)
+    noFogBtn.Font = Enum.Font.SourceSansBold
+    noFogBtn.TextSize = 14
+
+    local function toggleNoFog(enable)
+        isNoFogEnabled = enable
+        local lighting = game:GetService("Lighting")
+
+        if enable then
+            -- Simpan pengaturan asli
+            originalFogSettings.FogStart = lighting.FogStart
+            originalFogSettings.FogEnd = lighting.FogEnd
+            clonedAtmospheres = {}
+
+            -- Kloning dan hancurkan objek Atmosphere
+            for _, v in ipairs(lighting:GetDescendants()) do
+                if v:IsA("Atmosphere") then
+                    table.insert(clonedAtmospheres, v:Clone())
+                    v:Destroy()
+                end
+            end
+
+            -- Mulai loop untuk memaksa kabut hilang
+            if not (noFogConnection and noFogConnection.Connected) then
+                noFogConnection = RunService.Stepped:Connect(function()
+                    pcall(function() lighting.FogEnd = 100000 end)
+                end)
+            end
+
+            noFogBtn.Text = "🌫️ No Fog: ON"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+        else
+            -- Hentikan loop
+            if noFogConnection and noFogConnection.Connected then
+                noFogConnection:Disconnect()
+                noFogConnection = nil
+            end
+
+            -- Kembalikan pengaturan asli
+            pcall(function() lighting.FogStart = originalFogSettings.FogStart end)
+            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
+            for _, cloned in ipairs(clonedAtmospheres) do cloned.Parent = lighting end
+
+            noFogBtn.Text = "🌫️ No Fog: OFF"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    noFogBtn.MouseButton1Click:Connect(function()
+        toggleNoFog(not isNoFogEnabled)
+    end)
+
     -- Spectate Toggle
     local toggleSpectateBtn = Instance.new("TextButton", miscPanel)
     toggleSpectateBtn.Size = UDim2.new(1, -10, 0, 30)
@@ -2129,35 +2006,6 @@
 
     alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
 
-    -- No Fog Toggle (ON/OFF)
-    local isNoFogEnabled = false
-    local originalFogSettings = {}
-    local clonedAtmospheres = {}
-    local noFogConnection = nil
-    local noFogBtn = Instance.new("TextButton", miscPanel)
-    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
-    noFogBtn.Text = "🌫️ No Fog: OFF"
-    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    noFogBtn.TextColor3 = Color3.new(1,1,1)
-    noFogBtn.Font = Enum.Font.SourceSansBold
-    noFogBtn.TextSize = 14
-
-    local function toggleNoFog(enable)
-        isNoFogEnabled = enable
-        local lighting = game:GetService("Lighting")
-        if enable then
-            originalFogSettings.FogEnd = lighting.FogEnd
-            if not (noFogConnection and noFogConnection.Connected) then
-                noFogConnection = RunService.Stepped:Connect(function() pcall(function() lighting.FogEnd = 100000 end) end)
-            end
-            noFogBtn.Text = "🌫️ No Fog: ON"; noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
-        else
-            if noFogConnection and noFogConnection.Connected then noFogConnection:Disconnect(); noFogConnection = nil end
-            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
-            noFogBtn.Text = "🌫️ No Fog: OFF"; noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        end
-    end
-    noFogBtn.MouseButton1Click:Connect(function() toggleNoFog(not isNoFogEnabled) end)
     --------------------------------------------------------------------
     -- SETTINGS PANEL
     --------------------------------------------------------------------
@@ -2184,7 +2032,6 @@
             lighting.GlobalShadows = false
             lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             pcall(function() userSettings.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
-            lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             for _, effect in ipairs(lighting:GetChildren()) do
                 if effect:IsA("PostEffect") then
                     effect.Enabled = false
@@ -2319,6 +2166,11 @@
         -- Stop No Fog
         if isNoFogEnabled then
             toggleNoFog(false)
+        end
+
+        -- Stop Always Day
+        if isAlwaysDayEnabled then
+            toggleAlwaysDay(false)
         end
 
     end
