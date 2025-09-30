@@ -16,6 +16,7 @@
     -- CONFIG
     local config = {
         fpsCap = 9999, -- Default FPS cap
+        disableChat = true, -- NEW: Disable chat as per input
         FreezeWhileFishing = true,
         ShakeAlwaysCenter = true,
         ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
@@ -23,8 +24,12 @@
     pcall(function() setfpscap(config.fpsCap) end)
 
     -- Disable chat if configured
+    -- The user's provided script has this, but the target script does not.
+    -- I will add it as it seems intended.
     if config.disableChat then
-        pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
+        pcall(function()
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+        end)
     end
 
     --------------------------------------------------------------------
@@ -538,8 +543,8 @@
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                hum.WalkSpeed = freeze and 0 or currentWalkSpeed
-                hum.JumpPower = freeze and 0 or currentJumpPower
+                hum.WalkSpeed = freeze and 0 or 16
+                hum.JumpPower = freeze and 0 or 50
             end
         end
     end
@@ -681,55 +686,25 @@
 
     -- reel / tarik ikan
     local function reel()
-        -- Metode 1: Instant catch via manipulasi UI (paling cepat jika berhasil)
-        local success, result = pcall(function()
-            local reel_ui = PlayerGui:FindFirstChild("reel")
-            if not reel_ui then return false end
-            local reel_bar = reel_ui:FindFirstChild("bar")
-            if not reel_bar then return false end
-            local reel_client = reel_bar:FindFirstChild("reel")
-            if not reel_client
-            then return false end
-
-            if reel_client.Disabled then reel_client.Disabled = false end
-
-            local update_colors = getsenv(reel_client).UpdateColors
-            if update_colors then
-                setupvalue(update_colors, 1, 100)
-                local reelEvent = ReplicatedStorage:FindFirstChild("events", true) and ReplicatedStorage.events:FindFirstChild("reelfinished")
-                if reelEvent then
-                    reelEvent:FireServer(getupvalue(update_colors, 1), true)
-                end
-                attemptAutoSell()
-                return true
-            end
-            return false
-        end)
-
-        if success and result then return end -- Jika metode 1 berhasil, hentikan
-
-        -- Metode 2: Fallback dengan memanggil event 'reelfinished' secara langsung
-        local reelEvent = ReplicatedStorage:FindFirstChild("reelfinished", true)
-        if not reelEvent then
-            local eventsFolder = ReplicatedStorage:FindFirstChild("events", true) or ReplicatedStorage:FindFirstChild("Events", true)
-            if eventsFolder then reelEvent = eventsFolder:FindFirstChild("reelfinished") end
-        end
-
-        if reelEvent then
-            -- Coba beberapa argumen umum
-            pcall(function() reelEvent:FireServer(100, true) end)
-            pcall(function() reelEvent:FireServer(true) end)
+        -- Try global event in ReplicatedStorage first
+        local rsEvents = ReplicatedStorage:FindFirstChild("events") or ReplicatedStorage:FindFirstChild("Events")
+        if rsEvents and rsEvents:FindFirstChild("reelfinished") then
+            pcall(function() rsEvents.reelfinished:FireServer(100, true) end)
             attemptAutoSell()
             return
         end
 
+        -- If not found globally, try to find in the rod itself
         local rod = findRod()
-        local eventsFolder = rod and (rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents"))
-        local reelEvent = eventsFolder and (eventsFolder:FindFirstChild("reelfinished") or eventsFolder:FindFirstChild("ReelFinished"))
-        if reelEvent then
-            pcall(function() reelEvent:FireServer(100, true) end)
-            pcall(function() reelEvent:FireServer(true) end)
-            attemptAutoSell()
+        if not rod then return end
+
+        local eventsFolder = rod:FindFirstChild("events") or rod:FindFirstChild("Events") or rod:FindFirstChild("RemoteEvents")
+        if eventsFolder then
+            local reelEvent = eventsFolder:FindFirstChild("reelfinished") or eventsFolder:FindFirstChild("ReelFinished")
+            if reelEvent then
+                pcall(function() reelEvent:FireServer(100, true) end)
+                attemptAutoSell()
+            end
         end
     end
 
@@ -751,46 +726,63 @@
     end
 
     local function shake()
-		local shake_ui = PlayerGui:FindFirstChild("shakeui")
-		if shake_ui then
-			local safezone = shake_ui:FindFirstChild("safezone")
-			local button = safezone and safezone:FindFirstChild("button")
-			if button and button.Visible then
-				if config.ShakeAlwaysCenter then
-					local size = config.ShakeButtonSize
-					button.Size = UDim2.new(0, size, 0, size)
-					button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-				end
-				-- Logika klik yang disempurnakan untuk PC dan Mobile
-				local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
-				if UIS.TouchEnabled then
-					-- Untuk Mobile: gunakan SendTouchEvent (press/release) bila tersedia; fallback ke mouse
-					local canSendTouch = typeof(VIM.SendTouchEvent) == "function"
-					task.spawn(function()
-						for i = 1, 160 do
-							if canSendTouch then
-								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, true, game) end)
-								pcall(function() VIM:SendTouchEvent(x, y, x, y, 1, false, game) end)
-							else
-								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, true, game, 0) end)
-								pcall(function() VIM:SendMouseButtonEvent(x, y, 0, false, game, 0) end)
-							end
-						end
-					end)
-				else
-					-- Untuk PC: Gunakan simulasi klik mouse (MouseButtonEvent)
-					-- Menaikkan jumlah klik untuk mempercepat shake
-					for i = 1, 160 do
-						VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
-						VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
-					end
+        local shake_ui = PlayerGui:FindFirstChild("shakeui")
+        if shake_ui then
+            local safezone = shake_ui:FindFirstChild("safezone")
+            local button = safezone and safezone:FindFirstChild("button")
+            if button and button.Visible then
+                if config.ShakeAlwaysCenter then
+                    local size = config.ShakeButtonSize
+                    button.Size = UDim2.new(0, size, 0, size)
+                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+                end
+                -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
+                for i = 1, 40 do -- Meningkatkan jumlah klik per frame. Anda bisa menaikkan angka ini jika masih kurang cepat.
+                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
                 end
             end
         end
     end
 
-    -- The main game loop is now handled within the Start button's click event using a more responsive Heartbeat connection.
+    -- State machine untuk auto-fishing
+    local fishingState = "idle" -- State awal: idle, casting, shaking, reeling
 
+    RunService.Heartbeat:Connect(function()
+        if AutoFishing then
+            local rod = findRod()
+            if rod then
+                if config.FreezeWhileFishing then freezeCharacter(true) end
+                cast()
+                shake()
+                reel()
+
+                if fishingState == "idle" then
+                    -- Jika pancing ditemukan dan state idle, lempar pancing
+                    cast()
+                    fishingState = "casting" -- Ubah state menjadi sedang melempar
+
+                elseif fishingState == "casting" then
+                    -- Setelah melempar, langsung coba untuk shake (minigame)
+                    shake()
+                    -- State tidak diubah di sini, karena shake() akan terus berjalan
+                    -- hingga minigame selesai.
+
+                elseif fishingState == "reeling" then
+                    -- State ini diatur oleh hook 'enableInstantCatchHook' saat ikan tergigit.
+                    -- Setelah menarik ikan, tunggu sebentar lalu kembali ke idle untuk melempar lagi.
+                    task.wait(0.5) -- Beri jeda singkat sebelum melempar lagi
+                    fishingState = "idle"
+                end
+            else
+                -- Jika tidak ada pancing, pastikan karakter tidak beku dan state direset
+                freezeCharacter(false)
+                fishingState = "idle"
+            end
+        end
+    end)
+
+    enableInstantCatchHook()
     -- Modifikasi hook untuk mengintegrasikan dengan state machine
     local function enableInstantCatchHook()
         local eventsFolder = ReplicatedStorage:FindFirstChild("events")
@@ -801,7 +793,11 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then reel() end -- Hapus jeda untuk kecepatan maksimal
+                    if AutoFishing then
+                        task.wait(0.03)
+                        reel()
+                        fishingState = "reeling" -- Set state ke reeling setelah ikan ditarik
+                    end
                 end)
             end
         end
@@ -820,59 +816,14 @@
     startBtn.TextSize = 16
     startBtn.Parent = fishingPanel
 
-    local fishingConnection = nil
-    local lastActionTick = 0 -- Variabel untuk melacak waktu aksi terakhir
     startBtn.MouseButton1Click:Connect(function()
         AutoFishing = not AutoFishing
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-
-            if fishingConnection and fishingConnection.Connected then fishingConnection:Disconnect() end
-            lastActionTick = 0 -- Reset timer saat dimulai
-
-            -- Use Heartbeat for a more responsive loop to catch UI changes faster, fixing the shake bug.
-            fishingConnection = RunService.Heartbeat:Connect(function()
-                if not AutoFishing then
-                    if fishingConnection and fishingConnection.Connected then
-                        fishingConnection:Disconnect()
-                        fishingConnection = nil
-                    end
-                    freezeCharacter(false)
-                    return
-                end
-
-                local rod = findRod()
-                if rod then
-                    if config.FreezeWhileFishing then freezeCharacter(true) end
-
-                    local reelUI = PlayerGui:FindFirstChild("reel")
-                    local shakeUI = PlayerGui:FindFirstChild("shakeui")
-
-                    if reelUI and reelUI.Enabled then
-                        lastActionTick = tick()
-                        reel()
-                    elseif shakeUI and shakeUI.Enabled then
-                        lastActionTick = tick()
-                        shake()
-                    else
-                        -- Hanya cast jika sudah lebih dari 1 detik sejak aksi terakhir (reel/shake)
-                        -- untuk mencegah cast instan setelah menangkap ikan.
-                        if tick() - lastActionTick > 1 then
-                        cast()
-                        end
-                    end
-                else
-                    freezeCharacter(false)
-                end
-            end)
         else
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            if fishingConnection and fishingConnection.Connected then
-                fishingConnection:Disconnect()
-                fishingConnection = nil
-            end
             freezeCharacter(false)
         end
     end)
@@ -1096,7 +1047,6 @@
             if animateScript and animateScript.Parent then animateScript.Disabled = false end
             if hum and hum.Parent then hum.PlatformStand = false end
 
-            applyCharacterProperties() -- Tambahkan baris ini untuk mengembalikan WalkSpeed/JumpPower
             if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
             if flyGyro then flyGyro:Destroy(); flyGyro = nil end
             if flyBodyVelocity then flyBodyVelocity:Destroy(); flyBodyVelocity = nil end
@@ -1296,6 +1246,60 @@
     infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100); infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1); infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold; infiniteJumpToggleBtn.TextSize = 14
 
     infiniteJumpToggleBtn.MouseButton1Click:Connect(function() isInfiniteJumpEnabled = not isInfiniteJumpEnabled toggleInfiniteJump(isInfiniteJumpEnabled) if isInfiniteJumpEnabled then infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) else infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF" infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end end)
+
+    -- Camera Distance UI (Set Jarak)
+    local camDistControlFrame = Instance.new("Frame", playerPanel)
+    camDistControlFrame.Size = UDim2.new(1, -20, 0, 30)
+    camDistControlFrame.BackgroundTransparency = 1
+
+    local cdListLayout = Instance.new("UIListLayout", camDistControlFrame); cdListLayout.FillDirection = Enum.FillDirection.Horizontal; cdListLayout.Padding = UDim.new(0, 5); cdListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local cdLabel = Instance.new("TextLabel", camDistControlFrame); cdLabel.Size = UDim2.new(0.4, -5, 1, 0); cdLabel.Text = "Set Distance:"; cdLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdLabel.TextColor3 = Color3.new(1,1,1); cdLabel.Font = Enum.Font.SourceSans; cdLabel.TextSize = 14
+
+    local cdBox = Instance.new("TextBox", camDistControlFrame)
+    cdBox.Size = UDim2.new(0.4, -10, 1, 0); cdBox.PlaceholderText = "Jarak"; cdBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80); cdBox.TextColor3 = Color3.new(1,1,1); cdBox.ClearTextOnFocus = false; cdBox.Font = Enum.Font.SourceSans; cdBox.TextSize = 14
+
+    local cdSetBtn = Instance.new("TextButton", camDistControlFrame)
+    cdSetBtn.Size = UDim2.new(0.2, 0, 1, 0); cdSetBtn.Text = "Set"; cdSetBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180); cdSetBtn.TextColor3 = Color3.new(1,1,1); cdSetBtn.Font = Enum.Font.SourceSansBold; cdSetBtn.TextSize = 14
+
+    cdSetBtn.MouseButton1Click:Connect(function()
+        local distance = tonumber(cdBox.Text)
+        if not distance or distance < 0 then return end
+
+        -- Logika untuk memindahkan kamera ke jarak tertentu
+        local originalMin = LocalPlayer.CameraMinZoomDistance
+        local originalMax = LocalPlayer.CameraMaxZoomDistance
+        if originalMax < distance then originalMax = distance end
+
+        LocalPlayer.CameraMaxZoomDistance = distance
+        LocalPlayer.CameraMinZoomDistance = distance
+        task.wait() -- Tunggu satu frame agar kamera "pindah" ke posisi baru
+        LocalPlayer.CameraMaxZoomDistance = originalMax
+        LocalPlayer.CameraMinZoomDistance = originalMin -- Kembalikan min zoom ke nilai aslinya
+    end)
+
+    -- POV Toggle
+    local isPovEnabled = false
+    local povConnection = nil
+    local povToggleBtn = Instance.new("TextButton", playerPanel)
+    povToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+    povToggleBtn.Text = "Enable POV Zoom: OFF"
+    povToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    povToggleBtn.TextColor3 = Color3.new(1,1,1)
+    povToggleBtn.Font = Enum.Font.SourceSansBold
+    povToggleBtn.TextSize = 14
+
+    povToggleBtn.MouseButton1Click:Connect(function()
+        isPovEnabled = not isPovEnabled
+        povToggleBtn.Text = "Enable POV Zoom: " .. (isPovEnabled and "ON" or "OFF")
+        povToggleBtn.BackgroundColor3 = isPovEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+        if isPovEnabled and not (povConnection and povConnection.Connected) then
+            povConnection = RunService.RenderStepped:Connect(function() LocalPlayer.CameraMinZoomDistance = 0.5 end)
+        elseif not isPovEnabled and (povConnection and povConnection.Connected) then
+            povConnection:Disconnect()
+            povConnection = nil
+        end
+    end)
 
     --------------------------------------------------------------------
     -- CHARACTER STATE HANDLER (Fixes features after death)
@@ -1702,6 +1706,67 @@
         createNewPublicServer()
     end)
 
+    -- No Fog Toggle (ON/OFF)
+    local isNoFogEnabled = false
+    local originalFogSettings = {}
+    local clonedAtmospheres = {}
+    local noFogConnection = nil
+    local noFogBtn = Instance.new("TextButton", miscPanel)
+    noFogBtn.Size = UDim2.new(1, -10, 0, 30)
+    noFogBtn.Text = "🌫️ No Fog: OFF"
+    noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    noFogBtn.TextColor3 = Color3.new(1,1,1)
+    noFogBtn.Font = Enum.Font.SourceSansBold
+    noFogBtn.TextSize = 14
+
+    local function toggleNoFog(enable)
+        isNoFogEnabled = enable
+        local lighting = game:GetService("Lighting")
+
+        if enable then
+            -- Simpan pengaturan asli
+            originalFogSettings.FogStart = lighting.FogStart
+            originalFogSettings.FogEnd = lighting.FogEnd
+            clonedAtmospheres = {}
+
+            -- Kloning dan hancurkan objek Atmosphere
+            for _, v in ipairs(lighting:GetDescendants()) do
+                if v:IsA("Atmosphere") then
+                    table.insert(clonedAtmospheres, v:Clone())
+                    v:Destroy()
+                end
+            end
+
+            -- Mulai loop untuk memaksa kabut hilang
+            if not (noFogConnection and noFogConnection.Connected) then
+                noFogConnection = RunService.Stepped:Connect(function()
+                    pcall(function() lighting.FogEnd = 100000 end)
+                end)
+            end
+
+            noFogBtn.Text = "🌫️ No Fog: ON"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(80, 130, 180)
+        else
+            -- Hentikan loop
+            if noFogConnection and noFogConnection.Connected then
+                noFogConnection:Disconnect()
+                noFogConnection = nil
+            end
+
+            -- Kembalikan pengaturan asli
+            pcall(function() lighting.FogStart = originalFogSettings.FogStart end)
+            pcall(function() lighting.FogEnd = originalFogSettings.FogEnd end)
+            for _, cloned in ipairs(clonedAtmospheres) do cloned.Parent = lighting end
+
+            noFogBtn.Text = "🌫️ No Fog: OFF"
+            noFogBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    noFogBtn.MouseButton1Click:Connect(function()
+        toggleNoFog(not isNoFogEnabled)
+    end)
+
     -- Spectate Toggle
     local toggleSpectateBtn = Instance.new("TextButton", miscPanel)
     toggleSpectateBtn.Size = UDim2.new(1, -10, 0, 30)
@@ -1844,6 +1909,35 @@
         end
     end
 
+    -- Always Day Toggle
+    local isAlwaysDayEnabled = false
+    local alwaysDayConnection = nil
+    local alwaysDayBtn = Instance.new("TextButton", miscPanel)
+    alwaysDayBtn.Size = UDim2.new(1, -10, 0, 30)
+    alwaysDayBtn.Text = "☀️ Always Day: OFF"
+    alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    alwaysDayBtn.TextColor3 = Color3.new(1,1,1)
+    alwaysDayBtn.Font = Enum.Font.SourceSansBold
+    alwaysDayBtn.TextSize = 14
+
+    local function toggleAlwaysDay(enable)
+        isAlwaysDayEnabled = enable
+        if enable and not (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection = RunService.Stepped:Connect(function()
+                pcall(function() game:GetService("Lighting").ClockTime = 14 end)
+            end)
+            alwaysDayBtn.Text = "☀️ Always Day: ON"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(240, 190, 50)
+        elseif not enable and (alwaysDayConnection and alwaysDayConnection.Connected) then
+            alwaysDayConnection:Disconnect()
+            alwaysDayConnection = nil
+            alwaysDayBtn.Text = "☀️ Always Day: OFF"
+            alwaysDayBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
+
     --------------------------------------------------------------------
     -- SETTINGS PANEL
     --------------------------------------------------------------------
@@ -1868,7 +1962,7 @@
 
             -- Terapkan pengaturan boost
             lighting.GlobalShadows = false
-            lighting.FogEnd = 999999
+            lighting.FogEnd = 999999 -- Hapus pemeriksaan isNoFogEnabled
             pcall(function() userSettings.Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
             for _, effect in ipairs(lighting:GetChildren()) do
                 if effect:IsA("PostEffect") then
@@ -1879,7 +1973,7 @@
         elseif not enable and isFpsBoosted then
             -- Kembalikan pengaturan asli
             if originalSettings.globalShadows ~= nil then lighting.GlobalShadows = originalSettings.globalShadows end
-            if originalSettings.fogEnd ~= nil then lighting.FogEnd = originalSettings.fogEnd end
+            if originalSettings.fogEnd ~= nil then lighting.FogEnd = originalSettings.fogEnd end -- Hapus pemeriksaan isNoFogEnabled
             if originalSettings.qualityLevel ~= nil then pcall(function() userSettings.Rendering.QualityLevel = originalSettings.qualityLevel end) end
             if originalSettings.effects then
                 for effect, wasEnabled in pairs(originalSettings.effects) do
@@ -1995,6 +2089,17 @@
             fpsBoostBtn.Text = "🚀 FPS Boost: OFF"
             fpsBoostBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         end
+
+        -- Stop Always Day
+        if isAlwaysDayEnabled then
+            toggleAlwaysDay(false)
+        end
+
+        -- Stop No Fog
+        if isNoFogEnabled then
+            toggleNoFog(false)
+        end
+
     end
 
     -- Connect Spectate Buttons
@@ -2081,9 +2186,7 @@
                     config.fpsCap = decodedSettings.fpsCap or config.fpsCap
                     pcall(function() setfpscap(config.fpsCap) end)
                     config.FreezeWhileFishing = decodedSettings.freezeWhileFishing ~= nil and decodedSettings.freezeWhileFishing or config.FreezeWhileFishing
-                    autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell
-                    flySpeed = decodedSettings.flySpeed or flySpeed
-                    currentWalkSpeed = decodedSettings.walkSpeed or currentWalkSpeed
+                    autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell                    flySpeed = decodedSettings.flySpeed or flySpeed
                     currentJumpPower = decodedSettings.jumpPower or currentJumpPower
                     isInfiniteJumpEnabled = decodedSettings.infiniteJump or false
 
@@ -2150,145 +2253,6 @@
     RunService.Heartbeat:Connect(function()
         if gui and gui.Parent ~= game:GetService("CoreGui") then
             gui.Parent = game:GetService("CoreGui")
-        end
-    end)
-
-    -- Tambahkan UIListLayout ke playerPanel agar semua elemen tersusun otomatis
-    local walkSpeedControlFrame = Instance.new("Frame", playerPanel)
-    walkSpeedControlFrame.Size = UDim2.new(1, -20, 0, 30)
-    walkSpeedControlFrame.BackgroundTransparency = 1
-
-    local wsListLayout = Instance.new("UIListLayout", walkSpeedControlFrame)
-    wsListLayout.FillDirection = Enum.FillDirection.Horizontal
-    wsListLayout.Padding = UDim.new(0, 5)
-
-    local wsDownBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsDownBtn.Size = UDim2.new(0.15, 0, 1, 0);
-    wsDownBtn.Text = "-";
-    wsDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80);
-    wsDownBtn.TextColor3 = Color3.new(1,1,1);
-    wsDownBtn.Font = Enum.Font.SourceSansBold;
-    wsDownBtn.TextSize = 20;
-
-    local wsLabel = Instance.new("TextLabel", walkSpeedControlFrame)
-    wsLabel.Size = UDim2.new(0.4, -5, 1, 0)
-    wsLabel.Text = "Speed: " .. currentWalkSpeed
-    wsLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    wsLabel.TextColor3 = Color3.new(1,1,1)
-    wsLabel.Font = Enum.Font.SourceSans
-    wsLabel.TextSize = 14
-
-    local wsUpBtn = Instance.new("TextButton", walkSpeedControlFrame)
-    wsUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    wsUpBtn.Text = "+"
-    wsUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-    wsUpBtn.TextColor3 = Color3.new(1,1,1)
-    wsUpBtn.Font = Enum.Font.SourceSansBold
-    wsUpBtn.TextSize = 20
-
-    local wsBox = Instance.new("TextBox", walkSpeedControlFrame)
-    wsBox.Size = UDim2.new(0.3, -10, 1, 0)
-    wsBox.PlaceholderText = "Custom"
-    wsBox.Text = ""
-    wsBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    wsBox.TextColor3 = Color3.new(1,1,1)
-    wsBox.ClearTextOnFocus = false
-    wsBox.Font = Enum.Font.SourceSans
-    wsBox.TextSize = 14
-
-    local function updateWalkSpeedDisplay() wsLabel.Text = "Speed: " .. currentWalkSpeed end
-    wsDownBtn.MouseButton1Click:Connect(function() currentWalkSpeed = math.max(0, currentWalkSpeed - 5) updateWalkSpeedDisplay() applyCharacterProperties() end)
-    wsUpBtn.MouseButton1Click:Connect(function() currentWalkSpeed = currentWalkSpeed + 5 updateWalkSpeedDisplay() applyCharacterProperties() end)
-    wsBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newSpeed = tonumber(wsBox.Text) if newSpeed and newSpeed >= 0 then currentWalkSpeed = newSpeed updateWalkSpeedDisplay() applyCharacterProperties() end wsBox.Text = "" end end)
-
-    -- JumpPower UI
-    local jumpPowerControlFrame = Instance.new("Frame", playerPanel)
-    jumpPowerControlFrame.Size = UDim2.new(1, -20, 0, 30)
-    jumpPowerControlFrame.BackgroundTransparency = 1
-
-    local jpListLayout = Instance.new("UIListLayout", jumpPowerControlFrame)
-    jpListLayout.FillDirection = Enum.FillDirection.Horizontal
-    jpListLayout.Padding = UDim.new(0, 5)
-
-    local jpDownBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpDownBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    jpDownBtn.Text = "-"
-    jpDownBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-    jpDownBtn.TextColor3 = Color3.new(1,1,1)
-    jpDownBtn.Font = Enum.Font.SourceSansBold
-    jpDownBtn.TextSize = 20
-
-    local jpLabel = Instance.new("TextLabel", jumpPowerControlFrame)
-    jpLabel.Size = UDim2.new(0.4, -5, 1, 0)
-    jpLabel.Text = "Jump: " .. currentJumpPower
-    jpLabel.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    jpLabel.TextColor3 = Color3.new(1,1,1)
-    jpLabel.Font = Enum.Font.SourceSans
-    jpLabel.TextSize = 14
-
-    local jpUpBtn = Instance.new("TextButton", jumpPowerControlFrame)
-    jpUpBtn.Size = UDim2.new(0.15, 0, 1, 0)
-    jpUpBtn.Text = "+"
-    jpUpBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-    jpUpBtn.TextColor3 = Color3.new(1,1,1)
-    jpUpBtn.Font = Enum.Font.SourceSansBold
-    jpUpBtn.TextSize = 20
-
-    local jpBox = Instance.new("TextBox", jumpPowerControlFrame)
-    jpBox.Size = UDim2.new(0.3, -10, 1, 0)
-    jpBox.PlaceholderText = "Custom"
-    jpBox.Text = ""
-    jpBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    jpBox.TextColor3 = Color3.new(1,1,1)
-    jpBox.ClearTextOnFocus = false
-    jpBox.Font = Enum.Font.SourceSans
-    jpBox.TextSize = 14
-
-    local function updateJumpPowerDisplay() jpLabel.Text = "Jump: " .. currentJumpPower end
-    jpDownBtn.MouseButton1Click:Connect(function() currentJumpPower = math.max(0, currentJumpPower - 10) updateJumpPowerDisplay() applyCharacterProperties() end)
-    jpUpBtn.MouseButton1Click:Connect(function() currentJumpPower = currentJumpPower + 10 updateJumpPowerDisplay() applyCharacterProperties() end)
-    jpBox.FocusLost:Connect(function(enterPressed) if enterPressed then local newPower = tonumber(jpBox.Text) if newPower and newPower >= 0 then currentJumpPower = newPower updateJumpPowerDisplay() applyCharacterProperties() end jpBox.Text = "" end end)
-
-    -- Infinite Jump
-    local isInfiniteJumpEnabled = false
-    local infiniteJumpConnection = nil
-
-    local function onJumpRequest()
-        if isInfiniteJumpEnabled then
-            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end
-
-    local function toggleInfiniteJump(enable)
-        isInfiniteJumpEnabled = enable
-        if enable then
-            if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-            infiniteJumpConnection = UIS.JumpRequest:Connect(onJumpRequest)
-        else
-            if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection = nil end
-        end
-    end
-
-    local infiniteJumpToggleBtn = Instance.new("TextButton", playerPanel)
-    infiniteJumpToggleBtn.Size = UDim2.new(1, -20, 0, 30)
-    infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
-    infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    infiniteJumpToggleBtn.TextColor3 = Color3.new(1,1,1)
-    infiniteJumpToggleBtn.Font = Enum.Font.SourceSansBold
-    infiniteJumpToggleBtn.TextSize = 14
-
-    infiniteJumpToggleBtn.MouseButton1Click:Connect(function()
-        isInfiniteJumpEnabled = not isInfiniteJumpEnabled
-        toggleInfiniteJump(isInfiniteJumpEnabled)
-        if isInfiniteJumpEnabled then
-            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON"
-            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-        else
-            infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: OFF"
-            infiniteJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         end
     end)
 
