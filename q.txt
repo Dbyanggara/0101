@@ -617,10 +617,10 @@
     startBtn.MouseButton1Click:Connect(function()
         AutoFishing = not AutoFishing
         if AutoFishing then
-            startBtn.Text = "⏸ Stop"
-            startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
             if UIS.TouchEnabled then
-                createOrDestroyShakeButton(true)
+                -- Panggil createOrDestroyShakeButton dengan nilai boolean dari AutoFishing
+                -- Ini memastikan tombol muncul saat AutoFishing ON dan hilang saat OFF (jika autoSell juga OFF)
+                createOrDestroyShakeButton(AutoFishing)
             end
             -- Logika auto-fish yang dihapus ada di sini
         else
@@ -639,16 +639,16 @@
     -- PERBAIKAN FINAL V3: Meniru persis kode contoh yang diberikan.
     local shakeButton = nil
 
-    -- Fungsi utilitas untuk mensimulasikan klik, diambil dari contoh.
+    -- Perbaikan Fungsi simulate_click
     local function simulate_click(x, y)
         pcall(function()
             if UIS.TouchEnabled then
-                -- simulasi tap di layar untuk mobile
+                -- Mobile: simulasi tap
                 VIM:SendTouchEvent(x, y, 0, true, game, 1)
                 task.wait(0.05)
                 VIM:SendTouchEvent(x, y, 0, false, game, 1)
             else
-                -- PC (mouse)
+                -- PC: simulasi mouse
                 VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
                 task.wait(0.01)
                 VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
@@ -656,23 +656,19 @@
         end)
     end
 
-    -- Fungsi shake baru, meniru persis dari contoh.
+    -- Perbaikan Fungsi shake dengan fallback
     local function shake()
         pcall(function()
             local shake_ui = PlayerGui:FindFirstChild("shakeui")
-            if shake_ui then
-                local safezone = shake_ui:FindFirstChild("safezone")
-                local button = safezone and safezone:FindFirstChild("button")
-                if button then
-                    -- Terapkan opsi untuk memperbesar tombol dari config
-                    if config.ShakeEnableBigButton then
-                        button.Size = UDim2.new(config.ShakeBigButtonScale, 0, config.ShakeBigButtonScale, 0)
-                    end
+            local button = shake_ui and shake_ui:FindFirstChild("safezone") and shake_ui.safezone:FindFirstChild("button")
 
-                    if button.Visible then
-                        simulate_click(button.AbsolutePosition.X + button.AbsoluteSize.X / 2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2)
-                    end
-                end
+            if button and button.Visible then
+                local cx, cy = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y/2
+                simulate_click(cx, cy)
+            else
+                local evFolder = ReplicatedStorage:FindFirstChild("events")
+                local shakeEvent = evFolder and evFolder:FindFirstChild("shake")
+                if shakeEvent and shakeEvent:IsA("RemoteEvent") then shakeEvent:FireServer() end
             end
         end)
     end
