@@ -629,22 +629,26 @@
 
     -- Fungsi Shake dan Tombol Virtual untuk Mobile
     -- Diperbaiki untuk mobile: Menggunakan Humanoid.MoveDirection, bukan SendKeyEvent.
+    -- PERBAIKAN FINAL: Menggunakan simulasi klik pada UI 'shakeui' sesuai contoh.
     local shakeButton = nil
     local function shake()
-        if not AutoFishing then return end
+        -- Fungsi ini tidak lagi bergantung pada AutoFishing, bisa dipanggil kapan saja.
         pcall(function()
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
+            local shake_ui = PlayerGui:FindFirstChild("shakeui")
+            if shake_ui then
+                local safezone = shake_ui:FindFirstChild("safezone")
+                local button = safezone and safezone:FindFirstChild("button")
 
-            -- Gerakkan karakter maju sedikit
-            hum.MoveDirection = Vector3.new(0, 0, -1)
-            task.wait(0.1)
-            -- Gerakkan karakter mundur sedikit
-            hum.MoveDirection = Vector3.new(0, 0, 1)
-            task.wait(0.1)
-            -- Hentikan gerakan
-            hum.MoveDirection = Vector3.new(0, 0, 0)
+                if button and button.Visible then
+                    -- Simulate a click event on the button
+                    -- This is more reliable on mobile than SendMouseButtonEvent
+                    local args = {
+                        [1] = button.AbsolutePosition.X + (button.AbsoluteSize.X / 2),
+                        [2] = button.AbsolutePosition.Y + (button.AbsoluteSize.Y / 2)
+                    }
+                    button.MouseButton1Click:Fire(unpack(args))
+                end
+            end
         end)
     end
 
@@ -758,7 +762,7 @@
             sellBtn.Text = "Auto Sell: ON"
             sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
             collectSellCandidates()
-            -- Tombol shake hanya muncul jika Auto Sell aktif
+            -- Tombol shake hanya muncul jika AutoFishing aktif
             createOrDestroyShakeButton(true) -- Tampilkan tombol shake di mobile
         else
             sellBtn.Text = "Auto Sell: OFF"
