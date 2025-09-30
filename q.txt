@@ -789,24 +789,23 @@
             button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
         end
 
-        -- Dapatkan posisi tengah tombol
-        local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
-
         -- Jalankan di thread baru agar tidak mengganggu game
         task.spawn(function()
             if UIS.TouchEnabled then
                 -- Logika khusus untuk Mobile (Touch)
-                -- Menggunakan argumen yang benar untuk SendTouchEvent.
                 for i = 1, 160 do
                     if not (button and button.Visible) then break end
+                    -- PERBAIKAN: Dapatkan posisi terbaru tombol di setiap iterasi
+                    local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
                     pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.Begin, true, game) end)
                     pcall(function() VIM:SendTouchEvent(Vector2.new(x, y), Enum.UserInputState.End, true, game) end)
                 end
             else
                 -- Logika untuk PC (Mouse Click)
-                -- Menggunakan argumen yang benar untuk SendMouseButtonEvent.
                 for i = 1, 160 do
                     if not (button and button.Visible) then break end
+                    -- PERBAIKAN: Dapatkan posisi terbaru tombol di setiap iterasi
+                    local x, y = button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2
                     pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, true, game) end)
                     pcall(function() VIM:SendMouseButtonEvent(Vector2.new(x, y), Enum.UserInputType.MouseButton1, false, game) end)
                 end
