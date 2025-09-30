@@ -747,20 +747,28 @@
     -- Panggil fungsi ini sekali saat skrip dimuat untuk menyiapkan hook.
     enableInstantCatchHook()
 
-    --// Observer untuk Shake UI
-    --// Pendekatan ini lebih andal daripada memeriksa di dalam Heartbeat loop.
-    --// Ia akan langsung memicu fungsi shake() saat UI terdeteksi.
+    --// Observer Bertingkat untuk Shake UI (Lebih Andal)
+    --// 1. Memantau PlayerGui untuk kemunculan 'shakeui'.
+    --// 2. Setelah 'shakeui' muncul, memantau 'shakeui' untuk kemunculan 'safezone'.
+    --// Ini memastikan deteksi berfungsi bahkan jika UI dibuat setelah skrip berjalan.
     local function setupShakeObserver()
-        local shake_ui = PlayerGui:FindFirstChild("shakeui")
-        if shake_ui then
+        local function onShakeUiAdded(shake_ui)
+            -- Pastikan ini adalah UI yang benar sebelum menghubungkan listener
+            if not (shake_ui and shake_ui:IsA("ScreenGui") and shake_ui.Name == "shakeui") then return end
+
             shake_ui.ChildAdded:Connect(function(child)
-                -- Jika tombol muncul dan AutoFishing aktif, panggil shake.
                 if child.Name == "safezone" and AutoFishing then
-                    task.wait(0.05) -- Beri jeda singkat agar tombol sepenuhnya siap
+                    task.wait(0.05) -- Jeda singkat agar UI sepenuhnya siap
                     shake()
                 end
             end)
         end
+
+        -- Hubungkan ke ChildAdded dari PlayerGui untuk mendeteksi saat 'shakeui' dibuat.
+        PlayerGui.ChildAdded:Connect(onShakeUiAdded)
+
+        -- Jika 'shakeui' sudah ada saat skrip dimuat, langsung hubungkan listener.
+        if PlayerGui:FindFirstChild("shakeui") then onShakeUiAdded(PlayerGui:FindFirstChild("shakeui")) end
     end
     --// Perbaikan Fungsi Shake
     --// Logika dioptimalkan untuk eksekusi yang sangat cepat dengan menghilangkan `task.wait()`
