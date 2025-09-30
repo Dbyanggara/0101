@@ -751,7 +751,7 @@
         if AutoFishing then
             local rod = findRod()
             if rod then
-                if config.FreezeWhileFishing then freezeCharacter(true) end
+                if config.FreezeWhileFishing and AutoFishing then freezeCharacter(true) end
                 cast()
                 shake()
                 reel()
