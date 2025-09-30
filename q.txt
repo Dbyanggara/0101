@@ -16,7 +16,6 @@
     -- CONFIG
     local config = {
         fpsCap = 9999, -- Default FPS cap
-        disableChat = true, -- NEW: Disable chat as per input
         FreezeWhileFishing = true,
         ShakeAlwaysCenter = true,
         ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
@@ -543,8 +542,14 @@
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                hum.WalkSpeed = freeze and 0 or 16
-                hum.JumpPower = freeze and 0 or 50
+                if freeze then
+                    hum.WalkSpeed = 0
+                    hum.JumpPower = 0
+                else
+                    -- Restore to the speed/jump power set in the Player panel
+                    hum.WalkSpeed = currentWalkSpeed
+                    hum.JumpPower = currentJumpPower
+                end
             end
         end
     end
@@ -745,45 +750,8 @@
         end
     end
 
-    -- State machine untuk auto-fishing
-    local fishingState = "idle" -- State awal: idle, casting, shaking, reeling
+    local fishingState = "idle" -- "idle", "casting", "waiting_bite", "reeling"
 
-    RunService.Heartbeat:Connect(function()
-        if AutoFishing then
-            local rod = findRod()
-            if rod then
-                if config.FreezeWhileFishing then freezeCharacter(true) end
-                cast()
-                shake()
-                reel()
-
-                if fishingState == "idle" then
-                    -- Jika pancing ditemukan dan state idle, lempar pancing
-                    cast()
-                    fishingState = "casting" -- Ubah state menjadi sedang melempar
-
-                elseif fishingState == "casting" then
-                    -- Setelah melempar, langsung coba untuk shake (minigame)
-                    shake()
-                    -- State tidak diubah di sini, karena shake() akan terus berjalan
-                    -- hingga minigame selesai.
-
-                elseif fishingState == "reeling" then
-                    -- State ini diatur oleh hook 'enableInstantCatchHook' saat ikan tergigit.
-                    -- Setelah menarik ikan, tunggu sebentar lalu kembali ke idle untuk melempar lagi.
-                    task.wait(0.5) -- Beri jeda singkat sebelum melempar lagi
-                    fishingState = "idle"
-                end
-            else
-                -- Jika tidak ada pancing, pastikan karakter tidak beku dan state direset
-                freezeCharacter(false)
-                fishingState = "idle"
-            end
-        end
-    end)
-
-    enableInstantCatchHook()
-    -- Modifikasi hook untuk mengintegrasikan dengan state machine
     local function enableInstantCatchHook()
         local eventsFolder = ReplicatedStorage:FindFirstChild("events")
         if not eventsFolder then return end
@@ -793,17 +761,40 @@
             local ev = eventsFolder:FindFirstChild(name)
             if ev and ev:IsA("RemoteEvent") then
                 ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then
+                    if AutoFishing and fishingState ~= "reeling" then
+                        fishingState = "reeling"
                         task.wait(0.03)
                         reel()
-                        fishingState = "reeling" -- Set state ke reeling setelah ikan ditarik
+                        task.delay(0.5, function()
+                            if AutoFishing then fishingState = "idle" end
+                        end)
                     end
                 end)
             end
         end
     end
 
-    enableInstantCatchHook() -- Panggil fungsi hook yang sudah dimodifikasi
+    RunService.Heartbeat:Connect(function()
+        if not AutoFishing then return end
+
+        if config.FreezeWhileFishing then freezeCharacter(true) end
+
+        local rod = findRod()
+        if rod then
+            if fishingState == "idle" then
+                fishingState = "casting"
+                cast()
+                task.delay(0.2, function()
+                    if fishingState == "casting" then fishingState = "waiting_bite" end
+                end)
+            end
+            shake()
+        else
+            if config.FreezeWhileFishing then freezeCharacter(false) end
+        end
+    end)
+
+    enableInstantCatchHook()
 
     -- UI isi panel fishing
     local startBtn = Instance.new("TextButton")
@@ -821,10 +812,14 @@
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            fishingState = "idle" -- Reset state on start
         else
             startBtn.Text = "▶ Start"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            freezeCharacter(false)
+            if config.FreezeWhileFishing then
+                freezeCharacter(false) -- Unfreeze character on stop
+            end
+            fishingState = "idle" -- Reset state on stop
         end
     end)
 
