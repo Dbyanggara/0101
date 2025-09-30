@@ -538,8 +538,8 @@
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
-                hum.WalkSpeed = freeze and 0 or 16
-                hum.JumpPower = freeze and 0 or 50
+                hum.WalkSpeed = freeze and 0 or currentWalkSpeed
+                hum.JumpPower = freeze and 0 or currentJumpPower
             end
         end
     end
@@ -1078,6 +1078,7 @@
             if animateScript and animateScript.Parent then animateScript.Disabled = false end
             if hum and hum.Parent then hum.PlatformStand = false end
 
+            applyCharacterProperties() -- Tambahkan baris ini untuk mengembalikan WalkSpeed/JumpPower
             if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
             if flyGyro then flyGyro:Destroy(); flyGyro = nil end
             if flyBodyVelocity then flyBodyVelocity:Destroy(); flyBodyVelocity = nil end
