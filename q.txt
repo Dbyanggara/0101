@@ -17,7 +17,9 @@
     local config = {
         fpsCap = 9999, -- Default FPS cap
         FreezeWhileFishing = true,
-        ShakeAlwaysCenter = true,
+        ShakeAlwaysCenter = true, -- Posisi tombol virtual SHAKE di tengah
+        ShakeEnableBigButton = true, -- Perbesar tombol 'shakeui' asli (jika ada)
+        ShakeBigButtonScale = 2, -- Faktor perbesaran tombol 'shakeui'
         ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
     }
     pcall(function() setfpscap(config.fpsCap) end)
@@ -628,23 +630,34 @@
     end)
 
     -- Fungsi Shake dan Tombol Virtual untuk Mobile
-    -- PERBAIKAN FINAL V2: Menggunakan VirtualInputManager untuk mensimulasikan klik mouse/sentuhan.
+    -- PERBAIKAN FINAL V3: Meniru persis kode contoh yang diberikan.
     local shakeButton = nil
+
+    -- Fungsi utilitas untuk mensimulasikan klik, diambil dari contoh.
+    local function simulate_click(x, y)
+        pcall(function()
+            VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+            task.wait(0.01) -- Jeda sangat singkat antara tekan dan lepas
+            VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+        end)
+    end
+
+    -- Fungsi shake baru, meniru persis dari contoh.
     local function shake()
         pcall(function()
             local shake_ui = PlayerGui:FindFirstChild("shakeui")
             if shake_ui then
                 local safezone = shake_ui:FindFirstChild("safezone")
                 local button = safezone and safezone:FindFirstChild("button")
+                if button then
+                    -- Terapkan opsi untuk memperbesar tombol dari config
+                    if config.ShakeEnableBigButton then
+                        button.Size = UDim2.new(config.ShakeBigButtonScale, 0, config.ShakeBigButtonScale, 0)
+                    end
 
-                if button and button.Visible and button.AbsoluteSize.X > 0 then
-                    local x = button.AbsolutePosition.X + (button.AbsoluteSize.X / 2)
-                    local y = button.AbsolutePosition.Y + (button.AbsoluteSize.Y / 2)
-
-                    -- Mensimulasikan event sentuhan/klik mouse langsung di koordinat tombol.
-                    VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)  -- Tekan
-                    task.wait(0.05) -- Jeda singkat
-                    VIM:SendMouseButtonEvent(x, y, 0, false, game, 1) -- Lepas
+                    if button.Visible then
+                        simulate_click(button.AbsolutePosition.X + button.AbsoluteSize.X / 2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2)
+                    end
                 end
             end
         end)
@@ -760,7 +773,7 @@
             sellBtn.Text = "Auto Sell: ON"
             sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
             collectSellCandidates()
-            -- Tombol shake hanya muncul jika AutoFishing aktif
+            -- Tombol shake hanya muncul jika Auto Sell aktif
             createOrDestroyShakeButton(true) -- Tampilkan tombol shake di mobile
         else
             sellBtn.Text = "Auto Sell: OFF"
