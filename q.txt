@@ -1770,10 +1770,10 @@
         toggleNoFog(not isNoFogEnabled)
     end)
 
-    -- Tombol untuk mengambil Teleport Tool
+    -- Tombol untuk mengambil Teleport Tool (Versi diperbaiki)
     local getTpToolBtn = Instance.new("TextButton", miscPanel)
     getTpToolBtn.Size = UDim2.new(1, -10, 0, 30)
-    getTp-ToolBtn.Text = "🔨 Ambil Teleport Tool"
+    getTpToolBtn.Text = "🔨 Ambil Teleport Tool"
     getTpToolBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
     getTpToolBtn.TextColor3 = Color3.new(1,1,1)
     getTpToolBtn.Font = Enum.Font.SourceSansBold
@@ -1782,6 +1782,12 @@
     getTpToolBtn.MouseButton1Click:Connect(function()
         local player = LocalPlayer
         local mouse = player:GetMouse()
+
+        -- Cek apakah tool sudah ada untuk menghindari duplikat
+        if player.Backpack:FindFirstChild("Teleport Tool") then
+            getTpToolBtn.Text = "✅ Tool sudah ada"
+            return
+        end
 
         local TpTool = Instance.new("Tool")
         TpTool.Name = "Teleport Tool"
@@ -1792,7 +1798,6 @@
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
-
             hrp.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
         end)
         getTpToolBtn.Text = "✅ Tool di Backpack"
