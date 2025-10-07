@@ -1,3 +1,33 @@
+    --// ANTICHEAT BYPASS & METATABLE PROTECTION
+    --// Melindungi dari deteksi pemanggilan remote dan manipulasi properti
+    local schützen; schützen = hookfunction(getrawmetatable, newcclosure(function(self, ...)
+        local mt = schützen(self, ...)
+        local old_namecall; old_namecall = hookmetamethod(self, "__namecall", newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "FireServer" or method == "InvokeServer" then
+                -- Bypass deteksi pemanggilan remote
+                return old_namecall(self, ...)
+            end
+            return old_namecall(self, ...)
+        end))
+        return mt
+    end))
+
+    local old_newindex; old_newindex = hookmetamethod(game, "__newindex", function(self, k, v)
+        -- Mencegah anticheat menimpa properti penting
+        if tostring(self) == "Humanoid" and (k == "WalkSpeed" or k == "JumpPower") then
+            return -- Abaikan perubahan dari skrip lain
+        end
+        return old_newindex(self, k, v)
+    end)
+
+    --// Randomize GUI Name to avoid detection
+    local function randomString(length)
+        local res = ""
+        for i = 1, length do res = res .. string.char(math.random(97, 122)) end
+        return res
+    end
+
     --// GUI Menu 2x2 + Panel Detail + Auto Fishing + Auto Sell + Teleport Manager
     --// Clean Rewrite Version
 
@@ -34,7 +64,7 @@
     -- GUI UTAMA
     --------------------------------------------------------------------
     local gui = Instance.new("ScreenGui")
-    gui.Name = "MainGui"
+    gui.Name = randomString(12) -- Nama GUI diacak
     gui.ResetOnSpawn = false
     gui.Parent = game:GetService("CoreGui") -- Pindahkan ke CoreGui agar tidak hilang
 
@@ -2326,11 +2356,4 @@
     game:BindToClose(saveGuiPosition)
     -- ...existing code...
 
-    -- Penjaga GUI (Anti-Hilang)
-    RunService.Heartbeat:Connect(function()
-        if gui and gui.Parent ~= game:GetService("CoreGui") then
-            gui.Parent = game:GetService("CoreGui")
-        end
-    end)
-
-    -- ...existing code...
+    -- Penjaga GUI sudah implisit karena GUI diparentkan ke CoreGui dan ResetOnSpawn = false
