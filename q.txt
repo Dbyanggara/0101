@@ -706,59 +706,42 @@
         return false
     end
 
-    -- reel / tarik ikan
-    local function reel()
-        -- Fungsi ini sekarang hanya fokus untuk instant catch, tanpa mereset state.
-        local reeled = false
-        local reel_ui = PlayerGui:FindFirstChild("reel")
-        if not reel_ui then return end
+    -- Variabel untuk menyimpan koneksi hook
+    local instantCatchConnection = nil
 
-        local reel_bar = reel_ui:FindFirstChild("bar")
-        if not reel_bar then return end
-
-        local reel_client = reel_bar:FindFirstChild("reel")
-        if reel_client and reel_client.Disabled then
-            reel_client.Disabled = false
-        end
-
-        -- Coba metode instant catch dengan memanipulasi environment script (jika ada)
-        if reel_client then
-            local success, result = pcall(function() return getsenv(reel_client).UpdateColors end)
-            if success and result then
-                pcall(function() setupvalue(result, 100, 1000) end)
-                if rsEvents and rsEvents:FindFirstChild("reelfinished") then
-                    rsEvents.reelfinished:FireServer(getupvalue(result), true)
-                    attemptAutoSell()
-                    reeled = true
-                end
-                return
-            end
-        end
-
-        -- Coba metode dengan mengubah ukuran progress bar (jika metode pertama gagal)
-        -- Coba metode dengan mengubah ukuran progress bar
-        local progress = reel_bar:FindFirstChild("progress") or reel_bar:FindFirstChildOfClass("Frame")
-        if progress then
-            progress.Size = UDim2.new(1, 0, 1, 0)
+    -- Fungsi instant catch yang dipanggil oleh hook untuk mencegah UI muncul
+    -- Menggabungkan semua metode penangkapan untuk kecepatan maksimum.
+    local function instantCatch()
+        task.spawn(function()
+            -- Metode 1 (Paling Cepat): Langsung tembakkan event 'reelfinished'.
+            -- Ini adalah metode utama untuk mencegah UI muncul.
             local rsEvents = ReplicatedStorage:FindFirstChild("events")
-            if rsEvents and rsEvents:FindFirstChild("reelfinished") then
-                rsEvents.reelfinished:FireServer(1000, true)
-                attemptAutoSell()
-                reeled = true
+            local reelfinishedEvent = rsEvents and rsEvents:FindFirstChild("reelfinished")
+            if reelfinishedEvent then
+                reelfinishedEvent:FireServer(1000, true)
+                reelfinishedEvent:FireServer(true)
             end
-            return
-        end
 
-        -- Fallback: Tembakkan event reelfinished secara langsung
-        local rsEvents = ReplicatedStorage:FindFirstChild("events")
-        if not reeled and rsEvents and rsEvents:FindFirstChild("reelfinished") then
-            rsEvents.reelfinished:FireServer(100, true)
+            -- Metode 2 (Cadangan Agresif): Jika UI 'reel' sempat muncul, langsung tangani.
+            -- Ini berjalan hampir bersamaan dengan Metode 1.
+            local reel_ui = PlayerGui:FindFirstChild("reel")
+            if reel_ui then
+                local reel_bar = reel_ui:FindFirstChild("bar")
+                if reel_bar then
+                    -- Coba manipulasi script lokal di UI (jika ada)
+                    local reel_client = reel_bar:FindFirstChild("reel")
+                    if reel_client then
+                        local success, env = pcall(getsenv, reel_client)
+                        if success and env and env.UpdateColors then
+                            pcall(setupvalue, env.UpdateColors, 100, 1000)
+                        end
+                    end
+                end
+            end
+
+            -- Metode 3: Panggil auto-sell setelah semua upaya penangkapan.
             attemptAutoSell()
-            reeled = true
-        end
-
-        -- Setelah berhasil menarik, reset state agar bisa melempar pancing lagi.
-        -- Tidak perlu reset state lagi, loop utama akan menangani ini.
+        end)
     end
 
     local function enableInstantCatchHook()
@@ -766,19 +749,25 @@
         if not eventsFolder then return end
         local possibleEvents = {"reelstarted", "bite", "hooked", "fishbitten", "hook", "caught"}
 
-        -- Hook ini sekarang menjadi fallback jika metode shake() gagal
+        -- Hentikan koneksi lama jika ada untuk menghindari duplikasi
+        if instantCatchConnection then instantCatchConnection:Disconnect(); instantCatchConnection = nil end
+
         for _, name in ipairs(possibleEvents) do
             local ev = eventsFolder:FindFirstChild(name)
-            if ev and ev:IsA("RemoteEvent") and not ev:FindFirstChild("HookConnection") then
-                local marker = Instance.new("BoolValue", ev)
-                marker.Name = "HookConnection"
-                ev.OnClientEvent:Connect(function(...)
-                    if AutoFishing then task.spawn(reel) end
-                end)
+            if ev and ev:IsA("RemoteEvent") then
+                instantCatchConnection = ev.OnClientEvent:Connect(function() if AutoFishing then instantCatch() end end)
+                break -- Hentikan setelah menemukan dan menghubungkan event pertama yang cocok
             end
         end
     end
 
+    -- Fungsi 'reel' sekarang menjadi alias untuk 'instantCatch' karena logikanya sudah digabung.
+    -- Ini untuk memastikan loop utama tetap berfungsi jika memanggil reel().
+    local function reel()
+        instantCatch()
+    end
+
+    -- Fungsi 'shake' yang dipercepat
     local function shake()
         local shake_ui = PlayerGui:FindFirstChild("shakeui")
         if shake_ui then
