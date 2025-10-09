@@ -591,7 +591,7 @@
         if not char then return false end
 
         -- Cooldown untuk mencegah spam cast
-        if tick() - last_cast_time < 0.23 then return false end
+        if tick() - last_cast_time < 0.24 then return false end
 
         local rod = findRod()
         if not rod then return false end
@@ -2352,3 +2352,4 @@
     end)
 
     -- ...existing code...
+
