@@ -823,15 +823,20 @@
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             -- Saat berhenti, pastikan state kembali ke idle agar bisa dimulai lagi dengan benar.
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
-            autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
-            releaseVirtualInput() -- Panggil fungsi untuk melepaskan input virtual
+            autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya.
 
-            -- FIX: Kembalikan kontrol ke karakter segera setelah berhenti
-            -- Ini penting untuk mobile agar joystick berfungsi kembali.
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            -- FIX UNTUK MOBILE: Jalankan pemulihan dalam thread terpisah agar tidak memblokir UI
+            task.spawn(function()
+                -- 1. Lepaskan semua input virtual yang mungkin macet.
+                releaseVirtualInput()
+
+                -- 2. Paksa kembalikan kontrol ke karakter.
+                -- Ini sangat penting untuk mobile agar joystick berfungsi kembali.
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end
             end
         end
     end)
