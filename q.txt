@@ -541,6 +541,17 @@
         "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
     }
 
+    local function freezeCharacter(freeze)
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = freeze and 0 or 16
+                hum.JumpPower = freeze and 0 or 50
+            end
+        end
+    end
+
     -- Daftar kata kunci untuk mendeteksi alat pancing
     local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi"}
 
@@ -785,6 +796,8 @@
             while AutoFishing do
                 local rod = findRod()
                 if rod then
+                    freezeCharacter(true) -- Freeze karakter saat memancing
+
                     if PlayerGui:FindFirstChild("shakeui") then
                         shake()
                     elseif PlayerGui:FindFirstChild("reel") then
@@ -793,6 +806,8 @@
                     else
                         cast() -- cast() sudah punya cooldown internal
                     end
+                else
+                    freezeCharacter(false) -- Unfreeze jika tidak ada pancing
                 end
                 task.wait() -- Jeda singkat di akhir setiap iterasi untuk mencegah lag
             end
@@ -823,34 +838,10 @@
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             -- Saat berhenti, pastikan state kembali ke idle agar bisa dimulai lagi dengan benar.
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
-            autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya.
-
-            -- FIX UNTUK MOBILE: Jalankan pemulihan dalam thread terpisah agar tidak memblokir UI
-            task.spawn(function()
-                -- 1. Lepaskan semua input virtual yang mungkin macet.
-                releaseVirtualInput()
-
-                -- 2. Paksa kembalikan kontrol ke karakter.
-                -- Ini sangat penting untuk mobile agar joystick berfungsi kembali.
-                local char = LocalPlayer.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-                end
-            end
+            autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
+            freezeCharacter(false)
         end
     end)
-
-    -- Fungsi untuk melepaskan input virtual yang mungkin "macet"
-    local function releaseVirtualInput()
-        pcall(function()
-            -- Melepaskan klik kiri mouse virtual
-            -- Mengirim event 'up' beberapa kali untuk memastikan tidak ada yang macet.
-            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-        end)
-    end
 
     local sellBtn = Instance.new("TextButton")
     sellBtn.Size = UDim2.new(1, -20, 0, 30)
@@ -2146,7 +2137,6 @@
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             fishingState = "idle"
-            releaseVirtualInput() -- Pastikan input dilepaskan saat semua fitur dihentikan
         end
 
         -- Stop Flying
@@ -2352,4 +2342,3 @@
     end)
 
     -- ...existing code...
-
