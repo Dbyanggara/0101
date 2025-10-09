@@ -825,6 +825,14 @@
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
             autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
             releaseVirtualInput() -- Panggil fungsi untuk melepaskan input virtual
+
+            -- FIX: Kembalikan kontrol ke karakter segera setelah berhenti
+            -- Ini penting untuk mobile agar joystick berfungsi kembali.
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
         end
     end)
 
@@ -832,6 +840,9 @@
     local function releaseVirtualInput()
         pcall(function()
             -- Melepaskan klik kiri mouse virtual
+            -- Mengirim event 'up' beberapa kali untuk memastikan tidak ada yang macet.
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
             VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
         end)
     end
