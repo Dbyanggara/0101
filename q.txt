@@ -541,17 +541,6 @@
         "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
     }
 
-    local function freezeCharacter(freeze)
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = freeze and 0 or 16
-                hum.JumpPower = freeze and 0 or 50
-            end
-        end
-    end
-
     -- Daftar kata kunci untuk mendeteksi alat pancing
     local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi"}
 
@@ -780,7 +769,7 @@
                     button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
                 end
                 -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
-                for i = 1, 120 do -- Meningkatkan jumlah klik per frame. Anda bisa menaikkan angka ini jika masih kurang cepat.
+                for i = 1, 200 do -- Meningkatkan jumlah klik per frame. Anda bisa menaikkan angka ini jika masih kurang cepat.
                     VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
                     VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
                 end
@@ -796,8 +785,6 @@
             while AutoFishing do
                 local rod = findRod()
                 if rod then
-                    freezeCharacter(true) -- Freeze karakter saat memancing
-
                     if PlayerGui:FindFirstChild("shakeui") then
                         shake()
                     elseif PlayerGui:FindFirstChild("reel") then
@@ -806,8 +793,6 @@
                     else
                         cast() -- cast() sudah punya cooldown internal
                     end
-                else
-                    freezeCharacter(false) -- Unfreeze jika tidak ada pancing
                 end
                 task.wait() -- Jeda singkat di akhir setiap iterasi untuk mencegah lag
             end
@@ -839,7 +824,6 @@
             -- Saat berhenti, pastikan state kembali ke idle agar bisa dimulai lagi dengan benar.
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
             autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
-            freezeCharacter(false)
         end
     end)
 
@@ -2342,4 +2326,3 @@
     end)
 
     -- ...existing code...
-
