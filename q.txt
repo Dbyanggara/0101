@@ -824,8 +824,17 @@
             -- Saat berhenti, pastikan state kembali ke idle agar bisa dimulai lagi dengan benar.
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
             autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
+            releaseVirtualInput() -- Panggil fungsi untuk melepaskan input virtual
         end
     end)
+
+    -- Fungsi untuk melepaskan input virtual yang mungkin "macet"
+    local function releaseVirtualInput()
+        pcall(function()
+            -- Melepaskan klik kiri mouse virtual
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        end)
+    end
 
     local sellBtn = Instance.new("TextButton")
     sellBtn.Size = UDim2.new(1, -20, 0, 30)
@@ -2121,6 +2130,7 @@
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
             fishingState = "idle"
+            releaseVirtualInput() -- Pastikan input dilepaskan saat semua fitur dihentikan
         end
 
         -- Stop Flying
