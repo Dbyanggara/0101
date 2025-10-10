@@ -596,24 +596,33 @@
         return nil
     end
 
+    -- Fungsi untuk memastikan alat pancing sudah terpasang
+    local function ensureRodEquipped(rod)
+        if not rod or not rod.Parent or rod.Parent ~= LocalPlayer.Character then
+            LocalPlayer.Character.Humanoid:EquipTool(rod)
+        end
+    end
     local last_cast_time = 0
     local function cast()
         local char = LocalPlayer.Character
         if not char then return false end
 
         -- Cooldown untuk mencegah spam cast
-        if tick() - last_cast_time < 0.24 then return false end
+        if tick() - last_cast_time < 0.23 then return false end
 
         local rod = findRod()
         if not rod then return false end
+
+        -- Pastikan pancing sudah dipegang sebelum melempar
+        ensureRodEquipped(rod)
+        task.wait(0.1) -- Beri jeda singkat agar animasi equip selesai
 
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return false end
 
         VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.2) -- Durasi menahan klik (bisa disesuaikan jika perlu)
+        task.wait(0.15) -- Durasi menahan klik (bisa disesuaikan jika perlu)
         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-
         -- Fallback jika UI minigame tidak muncul, coba klik di depan karakter
         if not PlayerGui:FindFirstChild("shakeui") and not PlayerGui:FindFirstChild("reel") then
             local lookDirection = hrp.CFrame.LookVector
@@ -789,27 +798,34 @@
     end
 
     local autoFishingLoop
+    local lastSuccessfulCast = 0 -- Tambahkan variabel untuk melacak cast terakhir
 
     local function startAutoFishingLoop()
         if autoFishingLoop then return end -- Mencegah loop ganda
         autoFishingLoop = task.spawn(function()
+            lastSuccessfulCast = 0 -- Reset saat loop dimulai
             while AutoFishing do
-                local rod = findRod()
-                if rod then
-                    freezeCharacter(true) -- Freeze karakter saat memancing
-
-                    if PlayerGui:FindFirstChild("shakeui") then
-                        shake()
-                    elseif PlayerGui:FindFirstChild("reel") then
-                        reel()
-                        -- Jeda dihapus agar cast bisa langsung berjalan
+                pcall(function()
+                    local rod = findRod()
+                    if rod then
+                        freezeCharacter(true) -- Freeze karakter saat memancing
+                        if PlayerGui:FindFirstChild("shakeui") then
+                            shake()
+                        elseif PlayerGui:FindFirstChild("reel") then
+                            reel()
+                        else
+                            -- Hanya cast jika sudah melewati cooldown dari cast terakhir yang berhasil
+                            if tick() - lastSuccessfulCast > 0.001 then -- Cooldown 2 detik
+                                if cast() then
+                                    lastSuccessfulCast = tick() -- Update waktu cast jika berhasil
+                                end
+                            end
+                        end
                     else
-                        cast() -- cast() sudah punya cooldown internal
+                        freezeCharacter(false) -- Unfreeze jika tidak ada pancing
                     end
-                else
-                    freezeCharacter(false) -- Unfreeze jika tidak ada pancing
-                end
-                task.wait() -- Jeda singkat di akhir setiap iterasi untuk mencegah lag
+                end)
+                task.wait(0.1) -- Perpanjang jeda loop untuk stabilitas
             end
         end)
     end
@@ -2136,7 +2152,7 @@
         if AutoFishing then
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            fishingState = "idle"
+            autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
         end
 
         -- Stop Flying
@@ -2309,6 +2325,12 @@
     -- Perbarui teks tombol dan label yang bergantung pada state yang dimuat
     sellBtn.Text = "Auto Sell: " .. (autoSell and "ON" or "OFF")
     espToggleBtn.Text = "ESP: " .. (isEspEnabled and "ON" or "OFF")
+    if autoSell then
+        sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        collectSellCandidates()
+    else
+        sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end
     toggleSpectateBtn.Text = "Spectate: " .. (spectating and "ON" or "OFF")
 
     fpsBox.Text = tostring(config.fpsCap)
