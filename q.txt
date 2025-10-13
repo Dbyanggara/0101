@@ -622,13 +622,12 @@
         if not hrp then return false end
 
         VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.075) -- Durasi menahan klik (bisa disesuaikan jika perlu)
-        task.wait(0.1) -- Durasi menahan klik dipercepat
+        task.wait(0.5) -- JedaDurasi menahan klik untuk perfect cast (lemparan jauh)
         VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
         -- Fallback jika UI minigame tidak muncul, coba klik di depan karakter
         if not PlayerGui:FindFirstChild("shakeui") and not PlayerGui:FindFirstChild("reel") then
             local lookDirection = hrp.CFrame.LookVector
-            local targetPosition = hrp.Position + lookDirection * 1000
+            local targetPosition = hrp.Position + lookDirection * 10000
 
             local vector, onScreen = Camera:WorldToScreenPoint(targetPosition)
 
@@ -729,6 +728,23 @@
         local reel_ui = PlayerGui:FindFirstChild("reel")
         if reel_ui then reel_ui.Enabled = false end
 
+        -- Metode Tambahan: Percepat animasi karakter
+        -- Cari dan percepat semua animasi yang sedang berjalan pada Humanoid.
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            local animator = hum:FindFirstChildOfClass("Animator")
+            if animator then
+                for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                    track:AdjustSpeed(10000) -- Atur kecepatan animasi 1000x lebih cepat
+                end
+            end
+        end
+
+        -- Ini dieksekusi secara sinkron untuk mencegah UI berkedip.
+        local reel_ui = PlayerGui:FindFirstChild("reel")
+        if reel_ui then reel_ui.Enabled = false end
+
         -- Metode 2 (Utama): Tembakkan event 'reelfinished' secara asinkron.
         -- Ini adalah metode utama untuk menyelesaikan tangkapan di server.
         local rsEvents = ReplicatedStorage:FindFirstChild("events")
@@ -736,7 +752,7 @@
             local reelfinishedEvent = rsEvents:FindFirstChild("reelfinished")
             if reelfinishedEvent then
                 -- Coba beberapa kombinasi argumen yang umum untuk memastikan berhasil
-                reelfinishedEvent:FireServer(1000, true) -- (power, success)
+                reelfinishedEvent:FireServer(10000, true) -- (power, success)
                 reelfinishedEvent:FireServer(true)      -- (success)
                 reelfinishedEvent:FireServer()          -- (tanpa argumen)
             end
@@ -752,7 +768,7 @@
                     local success, env = pcall(getsenv, reel_client)
                     if success and env and env.UpdateColors then
                         -- Memaksa nilai 'success' pada script lokal
-                        pcall(setupvalue, env.UpdateColors, 100, 1000)
+                        pcall(setupvalue, env.UpdateColors, 100, 10000)
                     end
                     -- Sembunyikan lagi untuk memastikan
                     reel_ui.Enabled = false
@@ -764,8 +780,7 @@
         -- Dijalankan dalam task.spawn agar tidak menahan proses lain.
         task.spawn(function()
             if autoSell then attemptAutoSell() end
-            -- Jeda sangat singkat sebelum cast ulang untuk memastikan server selesai memproses tangkapan sebelumnya.
-            task.wait()
+            -- task.wait() dihapus untuk mempercepat siklus cast berikutnya
             cast()
             lastSuccessfulCast = tick() -- Reset cooldown cast
         end)
@@ -775,13 +790,17 @@
     local function monitorAndHideReelUI()
         if reelMonitorConnection and reelMonitorConnection.Connected then return end
         reelMonitorConnection = RunService.RenderStepped:Connect(function()
-            if not AutoFishing then return end -- Hanya berjalan jika auto fishing aktif
+            if not AutoFishing then return end
             local reel_ui = PlayerGui:FindFirstChild("reel")
             if reel_ui and reel_ui.Enabled then
                 reel_ui.Enabled = false
-                -- Setelah UI terdeteksi dan disembunyikan, langsung panggil instantCatch
-                -- untuk menyelesaikan proses penangkapan di server.
                 instantCatch()
+            end
+
+            -- Pindahkan logika shake ke RenderStepped untuk respons instan
+            local shake_ui = PlayerGui:FindFirstChild("shakeui")
+            if shake_ui and shake_ui.Visible then
+                shake()
             end
         end)
     end
@@ -849,11 +868,7 @@
                 pcall(function()
                     local rod = findRod()
                     if rod then
-                        freezeCharacter(true) -- Freeze karakter saat memancing
-                        if PlayerGui:FindFirstChild("shakeui") then
-                            -- Prioritaskan menyelesaikan 'shake' jika muncul
-                            shake()
-                        elseif PlayerGui:FindFirstChild("reel") then
+                        if PlayerGui:FindFirstChild("reel") then
                             -- Jika 'reel' UI terdeteksi, panggil fungsi reel (instantCatch)
                             reel()
                         else
@@ -868,8 +883,7 @@
                         freezeCharacter(false) -- Unfreeze jika tidak ada pancing
                     end
                 end)
-                task.wait() -- Gunakan task.wait() untuk loop secepat mungkin tanpa delay tetap
-                -- task.wait() dihapus agar loop berjalan secepat mungkin untuk kecepatan instan maksimal.
+                task.wait() -- Kembalikan task.wait() untuk mencegah game freeze
             end
         end)
     end
