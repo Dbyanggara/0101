@@ -882,10 +882,12 @@
                             shake()
                         elseif not isWaitingForFish then
                             -- Jika tidak ada aktivitas (reel/shake) dan tidak sedang menunggu ikan,
-                            -- panggil cast() lagi. Ini akan menjaga siklus tetap berjalan
-                            -- cast() sekarang dipanggil dari instantCatch, jadi kita hanya perlu failsafe di sini.
-                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0) then
-                            -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 5 detik,
+                            -- panggil cast() untuk memulai siklus baru.
+                            if cast() then
+                                lastSuccessfulCast = tick()
+                            end
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.1) then
+                            -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 10 detik,
                             -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
                             -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
                             isWaitingForFish = false
@@ -2452,3 +2454,4 @@
     end)
 
     -- ...existing code...
+
