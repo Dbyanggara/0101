@@ -613,7 +613,7 @@
         if not char or not rod then return false end
 
         -- Cooldown untuk mencegah spam cast yang berlebihan
-        if tick() - last_cast_time < 1 then return false end
+        if tick() - last_cast_time < 0.4 then return false end
 
         ensureRodEquipped(rod)
         task.wait(0.25) -- Beri jeda yang cukup agar animasi equip selesai
@@ -625,28 +625,11 @@
         local viewportSize = Camera.ViewportSize
         local centerX, centerY = viewportSize.X / 2, viewportSize.Y / 2
 
+        -- Metode ini mengirimkan event klik langsung ke koordinat tengah layar
+        -- tanpa memindahkan atau membaca posisi kursor mouse pengguna.
         VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
         task.wait(0.5) -- Tahan klik untuk lemparan jauh (perfect cast)
         VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
-
-        -- Metode 2 (Fallback): Klik di posisi kursor mouse saat ini.
-        -- Berguna jika game mengharapkan input di posisi mouse.
-        local mousePos = UIS:GetMouseLocation()
-        VIM:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, true, game, 1)
-        task.wait(0.1) -- Tahan sebentar
-        VIM:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, false, game, 1)
-
-        -- Metode 3 (Fallback): Klik di titik 3D di depan karakter.
-        -- Berguna untuk game yang mendeteksi target di dunia game.
-        task.spawn(function()
-            local targetPosition = hrp.Position + (hrp.CFrame.LookVector * 20) -- 20 stud di depan
-            local vector, onScreen = Camera:WorldToScreenPoint(targetPosition)
-            if onScreen then
-                VIM:SendMouseMoveEvent(vector.X, vector.Y)
-                VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, true, game, 1)
-                VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, false, game, 1)
-            end
-        end)
 
         last_cast_time = tick() -- Catat waktu lemparan terakhir
         isWaitingForFish = true -- Set penanda bahwa kita sudah melempar dan sedang menunggu
@@ -788,8 +771,11 @@
         -- Dijalankan dalam task.spawn agar tidak menahan proses lain.
         task.spawn(function()
             if autoSell then attemptAutoSell() end
-            -- task.wait() dihapus untuk mempercepat siklus cast berikutnya
-            isWaitingForFish = false -- Cukup reset penanda, biarkan loop utama yang melakukan cast
+            -- Jeda yang sedikit lebih lama untuk memastikan semua animasi (seperti uang) selesai.
+            task.wait(0.1)
+            isWaitingForFish = false -- Reset state agar loop utama tidak bingung
+            -- Langsung panggil cast() lagi untuk memulai siklus berikutnya secepat mungkin.
+            cast()
         end)
     end
 
@@ -894,19 +880,24 @@
                         elseif PlayerGui:FindFirstChild("shakeui") then
                             -- Jika 'shake' UI terdeteksi, panggil fungsi shake
                             shake()
-                            -- Jika 'reel' UI terdeteksi, panggil fungsi reel (instantCatch)
-                            reel()
-                        elseif not isWaitingForFish then -- PERUBAHAN: Hanya cast jika tidak sedang menunggu ikan
-                            -- Cukup panggil cast(). Fungsi cast() sudah memiliki cooldown internal.
+                        elseif not isWaitingForFish then
+                            -- Jika tidak ada aktivitas (reel/shake) dan tidak sedang menunggu ikan,
+                            -- panggil cast() lagi. Ini akan menjaga siklus tetap berjalan
+                            -- cast() sekarang dipanggil dari instantCatch, jadi kita hanya perlu failsafe di sini.
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0) then
+                            -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 5 detik,
+                            -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
+                            -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
+                            isWaitingForFish = false
                             if cast() then
-                                -- Tidak perlu melakukan apa-apa di sini, cast() sudah mengatur state
+                                lastSuccessfulCast = tick()
                             end
                         end
                     else
                         freezeCharacter(false) -- Unfreeze jika tidak ada pancing
                     end
                 end)
-                task.wait() -- Kembalikan task.wait() untuk mencegah game freeze
+                task.wait(0.1) -- Jeda singkat untuk menjaga loop tetap responsif tanpa membebani CPU
             end
         end)
     end
@@ -929,6 +920,11 @@
         if AutoFishing then
             startBtn.Text = "⏸ Stop"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            -- Langsung cari dan equip pancing, lalu cast pertama kali.
+            task.spawn(function()
+                local rod = findRod()
+                if rod then cast() end
+            end)
             startAutoFishingLoop() -- Mulai loop auto-fishing
         else
             startBtn.Text = "▶ Start"
