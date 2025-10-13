@@ -621,6 +621,11 @@
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return false end
 
+        -- FIX: Sejajarkan karakter dengan kamera untuk mencegah lemparan ke belakang.
+        -- Ini memastikan karakter menghadap ke depan (relatif terhadap kamera) sebelum melempar.
+        local camCF = Camera.CFrame
+        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z))
+
         -- Metode 1 (Utama): Klik di tengah layar. Ini adalah metode yang paling umum berhasil.
         local viewportSize = Camera.ViewportSize
         local centerX, centerY = viewportSize.X / 2, viewportSize.Y / 2
@@ -2454,4 +2459,3 @@
     end)
 
     -- ...existing code...
-
