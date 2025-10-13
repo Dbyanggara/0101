@@ -16,8 +16,8 @@
     -- CONFIG
     local config = {
         fpsCap = 9999, -- Default FPS cap
-        ShakeAlwaysCenter = true,
-        ShakeButtonSize = 120 -- Updated from 150 to 120 as per input
+        ShakeAlwaysCenter = true, -- Digunakan oleh fungsi shake() yang baru
+        ShakeButtonSize = 120 -- Ukuran sedang, tidak terlalu besar atau kecil
     }
     pcall(function() setfpscap(config.fpsCap) end)
 
@@ -535,6 +535,7 @@
     -- AUTO FISHING
     --------------------------------------------------------------------
     local AutoFishing, autoSell = false, false
+    local isWaitingForFish = false -- Penanda baru: true jika sedang menunggu ikan
     local sellCandidates, sellAttempted = {}, {}
     local sellPatterns = {
         "sell", "sellfish", "sell_fish", "sellall", "sell_all", "sellfish", "sellitems",
@@ -553,18 +554,26 @@
     end
 
     -- Daftar kata kunci untuk mendeteksi alat pancing
-    local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi"}
+    local rodKeywords = {"rod", "pancing", "fishing", "sword", "fisher", "fishi", "joran", "pancingan", "cane", "fish", "net", "harpoon", "trident", "spear", "pole", "line"}
+    local cachedRod = nil -- Variabel untuk menyimpan cache alat pancing
 
     local function findRod()
+        -- 1. Cek cache: Jika alat pancing yang disimpan masih valid (dipegang oleh karakter), langsung kembalikan.
+        if cachedRod and cachedRod.Parent and cachedRod.Parent == LocalPlayer.Character then
+            return cachedRod
+        end
+
+        -- 2. Jika cache tidak valid, lakukan pencarian penuh.
+        cachedRod = nil -- Reset cache
         local char = LocalPlayer.Character
+        if not char then return nil end
+
         local function isFishingTool(tool)
             if tool:IsA("Tool") then
                 local lowerName = tool.Name:lower()
-                -- Check if name contains a rod keyword
                 for _, keyword in ipairs(rodKeywords) do
                     if lowerName:find(keyword) then return true end
                 end
-                -- Additionally, check for common event folders, indicating it's an interactive tool
                 if tool:FindFirstChild("events") or tool:FindFirstChild("Events") or tool:FindFirstChild("RemoteEvents") then
                     return true
                 end
@@ -572,23 +581,18 @@
             return false
         end
 
-        -- Pertama, cari alat pancing yang sedang dipakai (di dalam Character)
-        if char then
-            for _, tool in ipairs(char:GetChildren()) do
-                if isFishingTool(tool) then return tool end
-            end
+        -- 3. Cari di karakter terlebih dahulu.
+        for _, tool in ipairs(char:GetChildren()) do
+            if isFishingTool(tool) then cachedRod = tool; return tool end
         end
 
-        -- Jika tidak ditemukan, cari di dalam Backpack
+        -- 4. Jika tidak ada, cari di backpack dan coba equip.
         local backpack = LocalPlayer:FindFirstChild("Backpack")
         if backpack then
             for _, tool in ipairs(backpack:GetChildren()) do
                 if isFishingTool(tool) then
-                    -- Alat pancing ditemukan di tas, coba untuk memakainya
-                    if char and char:FindFirstChildOfClass("Humanoid") then
-                        char.Humanoid:EquipTool(tool)
-                        return tool -- Kembalikan tool agar bisa langsung digunakan di frame berikutnya
-                    end
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if humanoid then humanoid:EquipTool(tool); cachedRod = tool; return tool end
                 end
             end
         end
@@ -598,47 +602,54 @@
 
     -- Fungsi untuk memastikan alat pancing sudah terpasang
     local function ensureRodEquipped(rod)
-        if not rod or not rod.Parent or rod.Parent ~= LocalPlayer.Character then
+        if rod and (not rod.Parent or rod.Parent ~= LocalPlayer.Character) then
             LocalPlayer.Character.Humanoid:EquipTool(rod)
         end
     end
     local last_cast_time = 0
     local function cast()
         local char = LocalPlayer.Character
-        if not char then return false end
-
-        -- Cooldown untuk mencegah spam cast
-        if tick() - last_cast_time < 0.1 then return false end
-
         local rod = findRod()
-        if not rod then return false end
+        if not char or not rod then return false end
 
-        -- Pastikan pancing sudah dipegang sebelum melempar
+        -- Cooldown untuk mencegah spam cast yang berlebihan
+        if tick() - last_cast_time < 1 then return false end
+
         ensureRodEquipped(rod)
-        task.wait(0.2) -- Beri jeda singkat agar animasi equip selesai
-        task.wait(0.05) -- Jeda sangat singkat agar animasi equip selesai
+        task.wait(0.25) -- Beri jeda yang cukup agar animasi equip selesai
 
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return false end
 
-        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.5) -- JedaDurasi menahan klik untuk perfect cast (lemparan jauh)
-        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-        -- Fallback jika UI minigame tidak muncul, coba klik di depan karakter
-        if not PlayerGui:FindFirstChild("shakeui") and not PlayerGui:FindFirstChild("reel") then
-            local lookDirection = hrp.CFrame.LookVector
-            local targetPosition = hrp.Position + lookDirection * 10000
+        -- Metode 1 (Utama): Klik di tengah layar. Ini adalah metode yang paling umum berhasil.
+        local viewportSize = Camera.ViewportSize
+        local centerX, centerY = viewportSize.X / 2, viewportSize.Y / 2
 
+        VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
+        task.wait(0.5) -- Tahan klik untuk lemparan jauh (perfect cast)
+        VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
+
+        -- Metode 2 (Fallback): Klik di posisi kursor mouse saat ini.
+        -- Berguna jika game mengharapkan input di posisi mouse.
+        local mousePos = UIS:GetMouseLocation()
+        VIM:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, true, game, 1)
+        task.wait(0.1) -- Tahan sebentar
+        VIM:SendMouseButtonEvent(mousePos.X, mousePos.Y, 0, false, game, 1)
+
+        -- Metode 3 (Fallback): Klik di titik 3D di depan karakter.
+        -- Berguna untuk game yang mendeteksi target di dunia game.
+        task.spawn(function()
+            local targetPosition = hrp.Position + (hrp.CFrame.LookVector * 20) -- 20 stud di depan
             local vector, onScreen = Camera:WorldToScreenPoint(targetPosition)
-
             if onScreen then
                 VIM:SendMouseMoveEvent(vector.X, vector.Y)
                 VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, true, game, 1)
                 VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, false, game, 1)
             end
-        end
+        end)
 
         last_cast_time = tick() -- Catat waktu lemparan terakhir
+        isWaitingForFish = true -- Set penanda bahwa kita sudah melempar dan sedang menunggu
         return true -- Anggap selalu berhasil karena ini adalah simulasi input
     end
 
@@ -723,24 +734,20 @@
     -- Fungsi instant catch yang dipanggil oleh hook untuk mencegah UI muncul
     -- Dipercepat untuk meminimalkan jeda animasi dan dijalankan secara asynchronous.
     local function instantCatch()
-        -- Metode 1 (Paling Cepat): Sembunyikan UI reel SEBELUM segalanya.
-        -- Ini dieksekusi secara sinkron untuk mencegah UI berkedip.
-        local reel_ui = PlayerGui:FindFirstChild("reel")
-        if reel_ui then reel_ui.Enabled = false end
-
-        -- Metode Tambahan: Percepat animasi karakter
-        -- Cari dan percepat semua animasi yang sedang berjalan pada Humanoid.
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            local animator = hum:FindFirstChildOfClass("Animator")
-            if animator then
-                for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-                    track:AdjustSpeed(10000) -- Atur kecepatan animasi 1000x lebih cepat
-                end
+        -- Metode 0 (Paling Agresif): Pindahkan UI keluar layar dan buat transparan.
+        -- Ini adalah cara paling efektif untuk mencegah UI berkedip sama sekali.
+        pcall(function()
+            local reel_ui = PlayerGui:FindFirstChild("reel")
+            if reel_ui then
+                -- Pindahkan jauh ke luar layar
+                reel_ui.Position = UDim2.new(5, 0, 5, 0)
+                -- Buat sepenuhnya transparan
+                reel_ui.BackgroundTransparency = 1
+                reel_ui.Visible = false
             end
-        end
+        end)
 
+        -- Metode 1 (Paling Cepat): Sembunyikan UI reel SEBELUM segalanya.
         -- Ini dieksekusi secara sinkron untuk mencegah UI berkedip.
         local reel_ui = PlayerGui:FindFirstChild("reel")
         if reel_ui then reel_ui.Enabled = false end
@@ -760,6 +767,7 @@
 
         -- Metode 3 (Cadangan Agresif): Jika UI 'reel' sempat muncul, langsung tangani.
         -- Ini berjalan sebagai fallback jika event tidak berhasil.
+        reel_ui = PlayerGui:FindFirstChild("reel") -- Cari lagi untuk memastikan
         if reel_ui then
             local reel_bar = reel_ui:FindFirstChild("bar")
             if reel_bar then
@@ -781,8 +789,7 @@
         task.spawn(function()
             if autoSell then attemptAutoSell() end
             -- task.wait() dihapus untuk mempercepat siklus cast berikutnya
-            cast()
-            lastSuccessfulCast = tick() -- Reset cooldown cast
+            isWaitingForFish = false -- Cukup reset penanda, biarkan loop utama yang melakukan cast
         end)
     end
 
@@ -795,12 +802,6 @@
             if reel_ui and reel_ui.Enabled then
                 reel_ui.Enabled = false
                 instantCatch()
-            end
-
-            -- Pindahkan logika shake ke RenderStepped untuk respons instan
-            local shake_ui = PlayerGui:FindFirstChild("shakeui")
-            if shake_ui and shake_ui.Visible then
-                shake()
             end
         end)
     end
@@ -836,23 +837,42 @@
         instantCatch()
     end
 
-    -- Fungsi 'shake' yang dipercepat
+    -- Fungsi 'shake' yang baru diterapkan dari input Anda
     local function shake()
+        -- Cari UI shake di PlayerGui
         local shake_ui = PlayerGui:FindFirstChild("shakeui")
         if shake_ui then
+            -- Cari safezone di dalam UI shake
             local safezone = shake_ui:FindFirstChild("safezone")
             local button = safezone and safezone:FindFirstChild("button")
+
+            -- Pastikan tombol ada dan terlihat
             if button and button.Visible then
+                -- Gunakan ukuran dari config untuk membuat tombol berukuran sedang.
+                button.Size = UDim2.fromOffset(config.ShakeButtonSize, config.ShakeButtonSize)
+
+                -- PERUBAHAN: Pusatkan tombol di tengah layar
                 if config.ShakeAlwaysCenter then
-                    local size = config.ShakeButtonSize
-                    button.Size = UDim2.new(0, size, 0, size)
-                    button.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
+                    -- Menggunakan UDim2 untuk memposisikan tombol di tengah safezone
+                    -- Ini adalah pendekatan yang lebih baik daripada memanipulasi AbsolutePosition
+                    button.AnchorPoint = Vector2.new(0.5, 0.5)
+                    button.Position = UDim2.new(0.5, 0, 0.5, 0)
                 end
-                -- Ulangi klik beberapa kali dalam satu frame untuk mempercepat
-                for i = 1, 300 do -- Meningkatkan jumlah klik per frame untuk kecepatan maksimal.
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, true, game, 1)
-                    VIM:SendMouseButtonEvent(button.AbsolutePosition.X + button.AbsoluteSize.X/2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 0, false, game, 1)
-                end
+
+                -- Klik tombol shake
+                local clickPosition = button.AbsolutePosition + (button.AbsoluteSize / 2)
+                VIM:SendMouseButtonEvent(clickPosition.X, clickPosition.Y, 0, true, game, 1)
+                task.wait(0.05) -- Jeda singkat
+                VIM:SendMouseButtonEvent(clickPosition.X, clickPosition.Y, 0, false, game, 1)
+
+                -- Setelah mengklik, gunakan Heartbeat untuk menunggu UI reel tanpa jeda
+                local connection
+                connection = RunService.Heartbeat:Connect(function()
+                    if PlayerGui:FindFirstChild("reel") then
+                        reel() -- Panggil fungsi reel (instantCatch)
+                        connection:Disconnect()
+                    end
+                end)
             end
         end
     end
@@ -871,12 +891,15 @@
                         if PlayerGui:FindFirstChild("reel") then
                             -- Jika 'reel' UI terdeteksi, panggil fungsi reel (instantCatch)
                             reel()
-                        else
-                            -- Hanya cast jika sudah melewati cooldown dari cast terakhir yang berhasil
-                            if tick() - lastSuccessfulCast > 0.1 then -- Cooldown dipercepat menjadi 0.1 detik untuk tangkapan lebih cepat
-                                if cast() then -- Hapus cooldown internal jika sudah ada cooldown eksternal
-                                    lastSuccessfulCast = tick() -- Update waktu cast terakhir yang berhasil
-                                end
+                        elseif PlayerGui:FindFirstChild("shakeui") then
+                            -- Jika 'shake' UI terdeteksi, panggil fungsi shake
+                            shake()
+                            -- Jika 'reel' UI terdeteksi, panggil fungsi reel (instantCatch)
+                            reel()
+                        elseif not isWaitingForFish then -- PERUBAHAN: Hanya cast jika tidak sedang menunggu ikan
+                            -- Cukup panggil cast(). Fungsi cast() sudah memiliki cooldown internal.
+                            if cast() then
+                                -- Tidak perlu melakukan apa-apa di sini, cast() sudah mengatur state
                             end
                         end
                     else
@@ -913,6 +936,7 @@
             -- Saat berhenti, pastikan state kembali ke idle agar bisa dimulai lagi dengan benar.
             -- Cukup hentikan fitur, loop Heartbeat akan berhenti dengan sendirinya.
             autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
+            isWaitingForFish = false -- Reset penanda saat berhenti
             freezeCharacter(false)
 
             -- Hentikan monitor UI saat fitur dimatikan untuk menghemat resource
@@ -2217,6 +2241,7 @@
         if AutoFishing then
             AutoFishing = false
             startBtn.Text = "▶ Start"; startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+            isWaitingForFish = false -- Reset penanda saat berhenti
             autoFishingLoop = nil -- Hentikan loop dengan mengosongkan variabelnya
         end
 
