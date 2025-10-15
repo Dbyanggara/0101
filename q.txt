@@ -525,6 +525,63 @@
             openHeadsitBtn.MouseButton1Click:Connect(function()
                 createHeadsitGui()
             end)
+
+            --// FUNGSI BARU: INVERTED SHIFTLOCK
+            local isInvertedShiftlockActive = false
+            local invertedShiftlockConnection = nil
+            local originalAutoRotate = true -- Variabel untuk menyimpan status rotasi asli
+
+            local function updateInvertedShiftlock()
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local cam = workspace.CurrentCamera
+
+                if not hrp or not cam then return end
+
+                -- Arahkan karakter ke arah berlawanan dari kamera, hanya pada sumbu X dan Z
+                local cameraLookVector = cam.CFrame.LookVector
+                local lookAtPosition = hrp.Position - Vector3.new(cameraLookVector.X, 0, cameraLookVector.Z).Unit
+
+                hrp.CFrame = CFrame.new(hrp.Position, lookAtPosition)
+            end
+
+            local function toggleInvertedShiftlock(enable)
+                isInvertedShiftlockActive = enable
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+                if enable then
+                    if hum then
+                        originalAutoRotate = hum.AutoRotate -- Simpan pengaturan asli
+                        hum.AutoRotate = false -- Nonaktifkan rotasi otomatis
+                    end
+                    if not (invertedShiftlockConnection and invertedShiftlockConnection.Connected) then
+                        invertedShiftlockConnection = RunService.Heartbeat:Connect(updateInvertedShiftlock)
+                    end
+                else
+                    if hum then
+                        hum.AutoRotate = originalAutoRotate -- Kembalikan ke pengaturan asli
+                    end
+                    if invertedShiftlockConnection then
+                        invertedShiftlockConnection:Disconnect()
+                        invertedShiftlockConnection = nil
+                    end
+                end
+            end
+
+            local invertedShiftlockBtn = Instance.new("TextButton", trollPanel)
+            invertedShiftlockBtn.Size = UDim2.new(1, -20, 0, 35)
+            invertedShiftlockBtn.Text = "Inverted Shiftlock: OFF"
+            invertedShiftlockBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            invertedShiftlockBtn.TextColor3 = Color3.new(1,1,1)
+            invertedShiftlockBtn.Font = Enum.Font.SourceSansBold
+            invertedShiftlockBtn.TextSize = 14
+
+            invertedShiftlockBtn.MouseButton1Click:Connect(function()
+                toggleInvertedShiftlock(not isInvertedShiftlockActive)
+                invertedShiftlockBtn.Text = "Inverted Shiftlock: " .. (isInvertedShiftlockActive and "ON" or "OFF")
+                invertedShiftlockBtn.BackgroundColor3 = isInvertedShiftlockActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+            end)
         end
 
     -- Update CanvasSize setelah semua tombol dibuat
@@ -2145,6 +2202,49 @@
 
     alwaysDayBtn.MouseButton1Click:Connect(function() toggleAlwaysDay(not isAlwaysDayEnabled) end)
 
+    -- Brightness / Fullbright Toggle
+    local isBrightnessEnabled = false
+    local originalBrightnessSettings = {}
+    local brightnessBtn = Instance.new("TextButton", miscPanel)
+    brightnessBtn.Size = UDim2.new(1, -10, 0, 30)
+    brightnessBtn.Text = "💡 Fullbright: OFF"
+    brightnessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    brightnessBtn.TextColor3 = Color3.new(1,1,1)
+    brightnessBtn.Font = Enum.Font.SourceSansBold
+    brightnessBtn.TextSize = 14
+
+    local function toggleBrightness(enable)
+        isBrightnessEnabled = enable
+        local lighting = game:GetService("Lighting")
+
+        if enable then
+            -- Simpan pengaturan asli
+            originalBrightnessSettings.Ambient = lighting.Ambient
+            originalBrightnessSettings.OutdoorAmbient = lighting.OutdoorAmbient
+            originalBrightnessSettings.Brightness = lighting.Brightness
+
+            -- Terapkan fullbright
+            lighting.Ambient = Color3.new(1, 1, 1)
+            lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            lighting.Brightness = 2
+
+            brightnessBtn.Text = "💡 Fullbright: ON"
+            brightnessBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        else
+            -- Kembalikan pengaturan asli jika ada
+            if originalBrightnessSettings.Ambient then
+                lighting.Ambient = originalBrightnessSettings.Ambient
+                lighting.OutdoorAmbient = originalBrightnessSettings.OutdoorAmbient
+                lighting.Brightness = originalBrightnessSettings.Brightness
+            end
+
+            brightnessBtn.Text = "💡 Fullbright: OFF"
+            brightnessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+
+    brightnessBtn.MouseButton1Click:Connect(function() toggleBrightness(not isBrightnessEnabled) end)
+
     --------------------------------------------------------------------
     -- SETTINGS PANEL
     --------------------------------------------------------------------
@@ -2295,6 +2395,18 @@
         -- Stop No Fog
         if isNoFogEnabled then
             toggleNoFog(false)
+        end
+
+        -- Stop Brightness/Fullbright
+        if isBrightnessEnabled then
+            toggleBrightness(false)
+        end
+
+        -- Stop Inverted Shiftlock
+        if isInvertedShiftlockActive then
+            toggleInvertedShiftlock(false)
+            local btn = trollPanel:FindFirstChild("InvertedShiftlockBtn")
+            if btn then btn.Text = "Inverted Shiftlock: OFF"; btn.BackgroundColor3 = Color3.fromRGB(100, 100, 100) end
         end
 
     end
