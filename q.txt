@@ -529,46 +529,65 @@
             --// FUNGSI BARU: INVERTED SHIFTLOCK
             local isInvertedShiftlockActive = false
             local invertedShiftlockConnection = nil
-            local originalAutoRotate = true -- Variabel untuk menyimpan status rotasi asli
+            local invertedShiftlockGyro = nil -- Variabel untuk menyimpan BodyGyro
 
             local function updateInvertedShiftlock()
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 local cam = workspace.CurrentCamera
-
-                if not hrp or not cam then return end
-
-                -- Arahkan karakter ke arah berlawanan dari kamera, hanya pada sumbu X dan Z
-                local cameraLookVector = cam.CFrame.LookVector
-                local lookAtPosition = hrp.Position - Vector3.new(cameraLookVector.X, 0, cameraLookVector.Z).Unit
-
-                hrp.CFrame = CFrame.new(hrp.Position, lookAtPosition)
+ 
+                -- Pastikan semua komponen ada, termasuk Gyro
+                if not hrp or not cam or not invertedShiftlockGyro or not invertedShiftlockGyro.Parent then
+                    -- Jika ada yang hilang, nonaktifkan fitur untuk keamanan
+                    if isInvertedShiftlockActive then toggleInvertedShiftlock(false) end
+                    return
+                end
+ 
+                -- Buat CFrame baru yang menghadap ke arah berlawanan dari kamera
+                -- Hanya gunakan sumbu Y dari kamera untuk rotasi horizontal
+                local lookVector = -cam.CFrame.LookVector
+                local targetCFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(lookVector.X, 0, lookVector.Z))
+ 
+                -- Atur CFrame dari BodyGyro, bukan CFrame karakter secara langsung
+                invertedShiftlockGyro.CFrame = targetCFrame
             end
 
             local function toggleInvertedShiftlock(enable)
                 isInvertedShiftlockActive = enable
                 local char = LocalPlayer.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-
+                local hrp = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"))
+ 
                 if enable then
-                    if hum then
-                        originalAutoRotate = hum.AutoRotate -- Simpan pengaturan asli
-                        hum.AutoRotate = false -- Nonaktifkan rotasi otomatis
+                    if not hrp then isInvertedShiftlockActive = false; return end -- Jangan aktifkan jika root part tidak ada
+ 
+                    -- Buat BodyGyro jika belum ada
+                    if not invertedShiftlockGyro or not invertedShiftlockGyro.Parent then
+                        invertedShiftlockGyro = Instance.new("BodyGyro")
+                        invertedShiftlockGyro.P = 50000 -- Power yang cukup untuk rotasi cepat
+                        invertedShiftlockGyro.MaxTorque = Vector3.new(0, 400000, 0) -- Hanya izinkan rotasi pada sumbu Y (horizontal)
+                        invertedShiftlockGyro.CFrame = hrp.CFrame
+                        invertedShiftlockGyro.Parent = hrp
                     end
+ 
+                    -- Hubungkan fungsi update ke RenderStepped untuk pembaruan yang lebih mulus
                     if not (invertedShiftlockConnection and invertedShiftlockConnection.Connected) then
-                        invertedShiftlockConnection = RunService.Heartbeat:Connect(updateInvertedShiftlock)
+                        invertedShiftlockConnection = RunService.RenderStepped:Connect(updateInvertedShiftlock)
                     end
                 else
-                    if hum then
-                        hum.AutoRotate = originalAutoRotate -- Kembalikan ke pengaturan asli
+                    -- Hancurkan BodyGyro saat fitur dimatikan
+                    if invertedShiftlockGyro then
+                        invertedShiftlockGyro:Destroy()
+                        invertedShiftlockGyro = nil
                     end
+ 
+                    -- Putuskan koneksi loop
                     if invertedShiftlockConnection then
                         invertedShiftlockConnection:Disconnect()
                         invertedShiftlockConnection = nil
                     end
                 end
             end
-
+ 
             local invertedShiftlockBtn = Instance.new("TextButton", trollPanel)
             invertedShiftlockBtn.Size = UDim2.new(1, -20, 0, 35)
             invertedShiftlockBtn.Text = "Inverted Shiftlock: OFF"
