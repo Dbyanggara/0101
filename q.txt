@@ -535,19 +535,19 @@
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 local cam = workspace.CurrentCamera
- 
+
                 -- Pastikan semua komponen ada, termasuk Gyro
                 if not hrp or not cam or not invertedShiftlockGyro or not invertedShiftlockGyro.Parent then
                     -- Jika ada yang hilang, nonaktifkan fitur untuk keamanan
                     if isInvertedShiftlockActive then toggleInvertedShiftlock(false) end
                     return
                 end
- 
+
                 -- Buat CFrame baru yang menghadap ke arah berlawanan dari kamera
                 -- Hanya gunakan sumbu Y dari kamera untuk rotasi horizontal
                 local lookVector = -cam.CFrame.LookVector
                 local targetCFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(lookVector.X, 0, lookVector.Z))
- 
+
                 -- Atur CFrame dari BodyGyro, bukan CFrame karakter secara langsung
                 invertedShiftlockGyro.CFrame = targetCFrame
             end
@@ -556,10 +556,10 @@
                 isInvertedShiftlockActive = enable
                 local char = LocalPlayer.Character
                 local hrp = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"))
- 
+
                 if enable then
                     if not hrp then isInvertedShiftlockActive = false; return end -- Jangan aktifkan jika root part tidak ada
- 
+
                     -- Buat BodyGyro jika belum ada
                     if not invertedShiftlockGyro or not invertedShiftlockGyro.Parent then
                         invertedShiftlockGyro = Instance.new("BodyGyro")
@@ -568,7 +568,7 @@
                         invertedShiftlockGyro.CFrame = hrp.CFrame
                         invertedShiftlockGyro.Parent = hrp
                     end
- 
+
                     -- Hubungkan fungsi update ke RenderStepped untuk pembaruan yang lebih mulus
                     if not (invertedShiftlockConnection and invertedShiftlockConnection.Connected) then
                         invertedShiftlockConnection = RunService.RenderStepped:Connect(updateInvertedShiftlock)
@@ -579,7 +579,7 @@
                         invertedShiftlockGyro:Destroy()
                         invertedShiftlockGyro = nil
                     end
- 
+
                     -- Putuskan koneksi loop
                     if invertedShiftlockConnection then
                         invertedShiftlockConnection:Disconnect()
@@ -587,7 +587,7 @@
                     end
                 end
             end
- 
+
             local invertedShiftlockBtn = Instance.new("TextButton", trollPanel)
             invertedShiftlockBtn.Size = UDim2.new(1, -20, 0, 35)
             invertedShiftlockBtn.Text = "Inverted Shiftlock: OFF"
@@ -689,10 +689,10 @@
         if not char or not rod then return false end
 
         -- Cooldown untuk mencegah spam cast yang berlebihan
-        if tick() - last_cast_time < 0.4 then return false end
+        if tick() - last_cast_time < 0.2 then return false end
 
         ensureRodEquipped(rod)
-        task.wait(0.25) -- Beri jeda yang cukup agar animasi equip selesai
+        task.wait(0.2) -- Beri jeda yang cukup agar animasi equip selesai
 
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return false end
@@ -700,7 +700,7 @@
         -- FIX: Sejajarkan karakter dengan kamera untuk mencegah lemparan ke belakang.
         -- Ini memastikan karakter menghadap ke depan (relatif terhadap kamera) sebelum melempar.
         local camCF = Camera.CFrame
-        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z))
+        -- hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z))
 
         -- Metode 1 (Utama): Klik di tengah layar. Ini adalah metode yang paling umum berhasil.
         local viewportSize = Camera.ViewportSize
@@ -852,8 +852,6 @@
         -- Dijalankan dalam task.spawn agar tidak menahan proses lain.
         task.spawn(function()
             if autoSell then attemptAutoSell() end
-            -- Jeda yang sedikit lebih lama untuk memastikan semua animasi (seperti uang) selesai.
-            task.wait(0.1)
             isWaitingForFish = false -- Reset state agar loop utama tidak bingung
             -- Langsung panggil cast() lagi untuk memulai siklus berikutnya secepat mungkin.
             cast()
@@ -2590,3 +2588,4 @@
     end)
 
     -- ...existing code...
+
