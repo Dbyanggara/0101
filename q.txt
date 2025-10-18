@@ -852,6 +852,8 @@
         -- Dijalankan dalam task.spawn agar tidak menahan proses lain.
         task.spawn(function()
             if autoSell then attemptAutoSell() end
+            -- Jeda yang sedikit lebih lama untuk memastikan semua animasi (seperti uang) selesai.
+            task.wait(0.1)
             isWaitingForFish = false -- Reset state agar loop utama tidak bingung
             -- Langsung panggil cast() lagi untuk memulai siklus berikutnya secepat mungkin.
             cast()
