@@ -967,7 +967,7 @@
                             if cast() then
                                 lastSuccessfulCast = tick()
                             end
-                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.25) then
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.3) then
                             -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 10 detik,
                             -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
                             -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
