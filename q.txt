@@ -967,14 +967,14 @@
                             if cast() then
                                 lastSuccessfulCast = tick()
                             end
-                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.1) then
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.2) then
                             -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 10 detik,
                             -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
                             -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
                             isWaitingForFish = false
-                            if cast() then
-                                lastSuccessfulCast = tick()
-                            end
+                            -- Tidak perlu langsung cast() di sini, biarkan loop berikutnya yang menanganinya
+                            -- untuk menghindari kondisi race. Cukup reset state.
+                            lastSuccessfulCast = tick() -- Reset timer untuk mencegah failsafe berulang kali
                         end
                     else
                         freezeCharacter(false) -- Unfreeze jika tidak ada pancing
@@ -2590,4 +2590,3 @@
     end)
 
     -- ...existing code...
-
