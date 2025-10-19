@@ -689,10 +689,10 @@
         if not char or not rod then return false end
 
         -- Cooldown untuk mencegah spam cast yang berlebihan
-        if tick() - last_cast_time < 0.23 then return false end
+        if tick() - last_cast_time < 0.26 then return false end
 
         ensureRodEquipped(rod)
-        task.wait(0.23) -- Beri jeda yang cukup agar animasi equip selesai
+        task.wait(0.26) -- Beri jeda yang cukup agar animasi equip selesai
 
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return false end
@@ -967,7 +967,7 @@
                             if cast() then
                                 lastSuccessfulCast = tick()
                             end
-                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.22) then
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.3) then
                             -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 10 detik,
                             -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
                             -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
