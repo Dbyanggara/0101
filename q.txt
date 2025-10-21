@@ -853,7 +853,8 @@
         task.spawn(function()
             if autoSell then attemptAutoSell() end
             -- Jeda yang sedikit lebih lama untuk memastikan semua animasi (seperti uang) selesai.
-            task.wait(0.1)
+            task.wait(0.01)
+            -- task.wait(0.1) -- Dihapus untuk mempercepat auto cast setelah instant catch
             isWaitingForFish = false -- Reset state agar loop utama tidak bingung
             -- Langsung panggil cast() lagi untuk memulai siklus berikutnya secepat mungkin.
             cast()
@@ -967,13 +968,13 @@
                             if cast() then
                                 lastSuccessfulCast = tick()
                             end
-                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 0.3) then
+                        elseif isWaitingForFish and (tick() - lastSuccessfulCast > 2) then
                             -- FAILSAFE: Jika "tersangkut" dalam keadaan menunggu ikan lebih dari 10 detik,
                             -- kemungkinan besar ada yang salah (misal: event terlewat, gangguan UI).
                             -- Atau umpan tidak jatuh ke air. Reset state dan paksa cast ulang.
                             isWaitingForFish = false
                             -- Tidak perlu langsung cast() di sini, biarkan loop berikutnya yang menanganinya
-                            -- untuk menghindari kondisi race. Cukup reset state.
+                            -- untuk menghindari kondisi race. Cukup reset state. Loop berikutnya akan cast.
                             lastSuccessfulCast = tick() -- Reset timer untuk mencegah failsafe berulang kali
                         end
                     else
