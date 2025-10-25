@@ -12,6 +12,7 @@
     local Camera = workspace.CurrentCamera
     local UIS = game:GetService("UserInputService")
     local VIM = game:GetService("VirtualInputManager")
+    local TweenService = game:GetService("TweenService")
 
     -- CONFIG
     local config = {
@@ -608,32 +609,30 @@
     menuContainer.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
 
     --------------------------------------------------------------------
-    -- AUTO FISHING (v2.6 Fixed)
+    -- AUTO SELL & FISHING PANEL
     --------------------------------------------------------------------
-    local autoFishingConfig = {
-        fpsCap = 9999, -- Default FPS cap
-        FreezeWhileFishing = true,
-        castHoldDuration = 0.1,
-        castDelay = 0.5,
-        fastCastDelay = 0.05,
-        centerShakeButton = true,
-        reelWaitTime = 2.3,
-        reelAnimationSpeed = 0.08,
-        instantCatchMode = true,
-        catchRetryAttempts = 5,
-        detectionSensitivity = 0.9,
-        maxCastAttempts = 3,
-        castCooldown = 1.0,
-        recastDelay = 1.5 -- Jeda sebelum mencoba cast ulang jika gagal
-    }
-
-    local AutoFishing, autoSell = false, false -- Variabel state utama
-    local autoFishingConnection, lastShakeTime = nil, 0
-
-    -- Utility functions
-    local fishing_utility = {blacklisted_attachments = {"bob", "bodyweld"}}
     local statusLabel -- Akan diinisialisasi nanti
 
+    -- Konfigurasi untuk auto-fishing, bisa disesuaikan
+    local autoFishingConfig = {
+        castHoldDuration = 0.2,      -- Durasi menahan klik saat melempar (untuk 'perfect cast')
+        castDelay = 0.2,             -- Jeda setelah melempar
+        recastDelay = 0.4,           -- Jeda sebelum mencoba melempar ulang jika gagal
+        shakeSpeed = 0.05,           -- Jeda antar goyangan (mencegah lag)
+        reelWaitTime = 0.5,          -- Waktu tunggu setelah reel untuk memastikan tangkapan terdaftar
+        reelActivationDelay = 0.2,   -- Jeda (detik) setelah UI reel muncul sebelum instant catch dimulai
+        instantCatchMode = true,     -- Mode tangkap instan
+        findRodRetries = 3,          -- Berapa kali mencoba mencari pancing sebelum menyerah
+        findRodDelay = 1.0           -- Jeda antar percobaan mencari pancing
+    }
+
+    -- State utama untuk fitur
+    local AutoFishing, autoSell = false, false
+    local autoFishingConnection = nil
+    local castTimeout = 0 -- Timer untuk mendeteksi lemparan gagal
+
+    -- Fungsi utilitas untuk memancing
+    local fishing_utility = {}
     do
         function fishing_utility.simulate_click(x, y, mb)
             VIM:SendMouseButtonEvent(x, y, (mb - 1), true, game, 1)
@@ -647,105 +646,24 @@
         end
     end
 
-    -- State management
+    -- Manajemen state untuk proses memancing
     local farm = {
-        last_cast_time = 0,
+        isCasting = false,
         isWaitingForFish = false,
-        fishingComplete = false,
         isReeling = false,
-        reelAnimationComplete = false,
-        catchAttempts = 0,
-        fishBiteDetected = false,
-        castAttempts = 0,
-        lastCastSuccess = false
+        fishingComplete = false,
+        lastCastTime = 0,
+        justFinishedShaking = false -- State baru untuk melacak jeda setelah shake
     }
 
-    -- Logika Auto Sell dari skrip lama, diintegrasikan ke yang baru
-    local sellCandidates, sellAttempted = {}, {}
-    local sellPatterns = {
-        "sell", "sellfish", "sell_fish", "sellall", "sell_all", "sellfish", "sellitems",
-        "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
-    }
-    local function collectSellCandidates()
-        sellCandidates = {}
-        local eventsFolder = ReplicatedStorage:FindFirstChild("events")
-        if not eventsFolder then return end
-
-        for _, child in ipairs(eventsFolder:GetChildren()) do
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-                local lname = child.Name:lower()
-                for _, p in ipairs(sellPatterns) do
-                    if lname:find(p) then
-                        table.insert(sellCandidates, child)
-                        break
-                    end
-                end
-            end
-        end
-
-        if #sellCandidates == 0 then
-            for _, child in ipairs(eventsFolder:GetChildren()) do
-                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-                    table.insert(sellCandidates, child)
-                end
-            end
-        end
-    end
-
-    local function tryInvokeCandidate(ev)
-        if not ev then return false end
-        local id = ev:GetFullName()
-        if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
-            return false
-        end
-        sellAttempted[id] = tick()
-
-        local attempts = {}
-        if ev:IsA("RemoteEvent") then
-            attempts = {
-                function() ev:FireServer() end,
-                function() ev:FireServer(true) end,
-                function() ev:FireServer("SellAll") end,
-                function() ev:FireServer("Sell") end,
-                function() ev:FireServer(LocalPlayer) end,
-                function() ev:FireServer(0) end,
-                function() ev:FireServer({}) end,
-            }
-        else -- RemoteFunction
-            attempts = {
-                function() ev:InvokeServer() end,
-                function() ev:InvokeServer(true) end,
-                function() ev:InvokeServer("SellAll") end,
-                function() ev:InvokeServer(LocalPlayer) end,
-                function() ev:InvokeServer({}) end,
-            }
-        end
-
-        for _, fn in ipairs(attempts) do
-            if pcall(fn) then return true end
-        end
-        return false
-    end
-
-    local function attemptAutoSell()
-        if not autoSell then return false end
-        if #sellCandidates == 0 then collectSellCandidates() end
-        if #sellCandidates == 0 then return false end
-
-        for _, ev in ipairs(sellCandidates) do
-            if tryInvokeCandidate(ev) then
-                return true
-            end
-        end
-        return false
-    end
-
+    -- Kumpulan fungsi untuk logika memancing
     do
         local rodKeywords = {
             "rod", "pancing", "fishing", "sword", "fisher", "fishi", "joran", "pancingan",
-            "cane", "fish", "net", "harpoon", "trident", "spear", "pole", "line"
+            "cane", "net", "harpoon", "trident", "spear", "pole", "line"
         }
 
+        -- Fungsi untuk mencari alat pancing
         function farm.isFishingTool(tool)
             if not tool then return false end
             if tool:IsA("Tool") then
@@ -753,14 +671,12 @@
                 for _, keyword in ipairs(rodKeywords) do
                     if lowerName:find(keyword) then return true end
                 end
-
                 if tool:FindFirstChild("events") or tool:FindFirstChild("Events") or
                    tool:FindFirstChild("RemoteEvents") or tool:FindFirstChild("remoteevents") or
                    tool:FindFirstChild("event") or tool:FindFirstChild("Event") or
                    tool:FindFirstChild("remoteevent") or tool:FindFirstChild("RemoteEvent") then
                     return true
                 end
-
                 for _, child in ipairs(tool:GetChildren()) do
                     local childName = child.Name:lower()
                     if childName:find("cast") or childName:find("reel") or
@@ -789,6 +705,7 @@
                         local humanoid = character:FindFirstChildOfClass("Humanoid")
                         if humanoid then
                             humanoid:EquipTool(tool)
+                            task.wait(0.2) -- Beri waktu untuk equip
                             return tool
                         end
                     end
@@ -798,73 +715,52 @@
             return nil
         end
 
-        function farm.freeze_character(freeze)
-            if not autoFishingConfig.FreezeWhileFishing then return end
-            local character = LocalPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    if freeze then
-                        humanoid.WalkSpeed = 0
-                        humanoid.JumpPower = 0
-                    else
-                        humanoid.WalkSpeed = 16
-                        humanoid.JumpPower = 50
-                    end
-                end
-            end
-        end
-
+        -- Fungsi untuk melempar pancing (Auto Cast)
         function farm.cast()
-            local char = LocalPlayer.Character
+            local character = LocalPlayer.Character
+            if not character then return end
+
+            if (tick() - farm.lastCastTime < autoFishingConfig.recastDelay) then return end
+
+            fishing_utility.updateStatus("Mencari pancing...")
             local rod = farm.find_rod()
-            if not char or not rod then
-                fishing_utility.updateStatus("No fishing rod found!")
-                return false
+            if not rod then
+                fishing_utility.updateStatus("Pancing tidak ditemukan!")
+                return
             end
 
-            -- Cooldown untuk mencegah spam cast yang berlebihan
-            if tick() - farm.last_cast_time < 0.5 then return false end
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if not humanoidRootPart then return end
 
-            -- Pastikan alat pancing sudah terpasang
-            if rod.Parent ~= char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum:EquipTool(rod) end
-                task.wait(0.26) -- Beri jeda agar animasi equip selesai
-            end
+            fishing_utility.updateStatus("Melempar pancing...")
+            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            task.wait(autoFishingConfig.castHoldDuration)
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return false end
+            task.wait(0.1) -- Jeda singkat untuk game memproses lemparan
 
-            -- Metode klik di tengah layar
-            local viewportSize = Camera.ViewportSize
-            local centerX, centerY = viewportSize.X / 2, viewportSize.Y / 2
+            if not PlayerGui:FindFirstChild("shakeui") and not PlayerGui:FindFirstChild("reel") then
+                local lookDirection = humanoidRootPart.CFrame.LookVector
+                local targetPosition = humanoidRootPart.Position + lookDirection * 100
 
-            -- Kirim event klik untuk melempar pancing
-            VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
-            task.wait(0.5) -- Tahan klik untuk lemparan jauh (perfect cast)
-            VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
+                local vector, onScreen = Camera:WorldToScreenPoint(targetPosition)
 
-            farm.last_cast_time = tick()
-            fishing_utility.updateStatus("Casting... Verifying...")
-
-            -- FIX: Tambahkan verifikasi untuk memastikan cast berhasil
-            -- Tunggu sesaat untuk melihat apakah ada 'bobber' (pelampung) yang muncul.
-            task.wait(0.75) -- Beri waktu bagi game untuk membuat objek pelampung
-            local bobberFound = false
-            for _, v in ipairs(workspace:GetDescendants()) do
-                if v.Name:lower():find("bobber") and v:IsA("BasePart") then
-                    bobberFound = true
-                    break
+                if onScreen then
+                    VIM:SendMouseMoveEvent(vector.X, vector.Y)
+                    task.wait(0.1)
+                    VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, true, game, 1)
+                    VIM:SendMouseButtonEvent(vector.X, vector.Y, 0, false, game, 1)
                 end
             end
 
-            farm.isWaitingForFish = bobberFound
-            farm.lastCastSuccess = bobberFound
-            fishing_utility.updateStatus(bobberFound and "Casting successful!" or "Casting failed, retrying...")
-            return bobberFound
+            farm.lastCastTime = tick()
+            farm.isWaitingForFish = true
+            farm.fishingComplete = false
+            fishing_utility.updateStatus("Menunggu ikan...")
+            castTimeout = tick() + 3 -- Set timeout 5 detik untuk lemparan ini
         end
 
+        -- Fungsi untuk menggoyangkan pancing (Auto Shake)
         function farm.shake()
             local shake_ui = PlayerGui:FindFirstChild("shakeui")
             if shake_ui then
@@ -872,139 +768,217 @@
                 local button = safezone and safezone:FindFirstChild("button")
 
                 if button and button.Visible then
+                    fishing_utility.updateStatus("Menggoyangkan...")
+                    -- Maksimalkan ukuran tombol untuk memastikan klik berhasil
                     button.Size = UDim2.new(1, 0, 1, 0)
-                    if autoFishingConfig.centerShakeButton then
-                        button.Position = UDim2.new(0.5, -button.AbsoluteSize.X / 2, 0.5, -button.AbsoluteSize.Y / 2)
-                    end
+                    button.Position = UDim2.new(0.5, -button.AbsoluteSize.X / 2, 0.5, -button.AbsoluteSize.Y / 2)
                     fishing_utility.simulate_click(button.AbsolutePosition.X + button.AbsoluteSize.X / 2, button.AbsolutePosition.Y + button.AbsoluteSize.Y / 2, 1)
-                    fishing_utility.updateStatus("Shaking...")
+                    -- Set state bahwa kita baru saja selesai shaking
+                    farm.justFinishedShaking = true
                 end
             end
         end
 
+        -- Fungsi untuk menarik pancing (Instant Reel)
         function farm.reel()
             if farm.isReeling then return end
             local reel_ui = PlayerGui:FindFirstChild("reel")
             if not reel_ui then return end
-            local reel_bar = reel_ui:FindFirstChild("bar")
-            if not reel_bar then return end
 
             farm.isReeling = true
-            farm.reelAnimationComplete = false
-            farm.catchAttempts = farm.catchAttempts + 1
-            fishing_utility.updateStatus("Ultra-Reeling... (Attempt " .. farm.catchAttempts .. ")")
+            farm.isWaitingForFish = false
+            fishing_utility.updateStatus("Menarik (Instant Reel)...")
 
-            local reel_client = reel_bar:FindFirstChild("reel")
-            if reel_client and reel_client:IsA("LocalScript") then reel_client.Disabled = true end
+            -- FIX: Tambahkan jeda 1 detik jika reeling terjadi tepat setelah shaking.
+            if farm.justFinishedShaking then
+                fishing_utility.updateStatus("Jeda setelah goyangan...")
+                task.wait(2.9) -- Jeda 1 detik setelah goyangan
+                farm.justFinishedShaking = false -- Reset state
+            else
+                task.wait(autoFishingConfig.reelActivationDelay) -- Gunakan jeda normal jika tidak
+            end
 
-            local progress = reel_bar:FindFirstChild("progress")
-            if not progress then
-                for _, child in ipairs(reel_bar:GetChildren()) do
-                    if child:IsA("Frame") then progress = child; break end
+            local reel_bar = reel_ui:FindFirstChild("bar")
+            if reel_bar then
+                local progress = reel_bar:FindFirstChild("progress")
+                if progress then
+                    -- FIX: Gunakan TweenService untuk animasi cepat, bukan perubahan instan.
+                    -- Ini lebih "seimbang" dan kecil kemungkinannya dideteksi.
+                    local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Linear) -- Animasi cepat 0.15 detik
+                    local goal = { Size = UDim2.new(1, 0, 1, 0) }
+                    local tween = TweenService:Create(progress, tweenInfo, goal)
+                    tween:Play()
+                    tween.Completed:Wait() -- Tunggu animasi selesai
                 end
             end
 
-            if progress then
-                progress.Size = UDim2.new(0, 0, 1, 0)
-                task.spawn(function()
-                    local events = ReplicatedStorage:FindFirstChild("events") or ReplicatedStorage:FindFirstChild("Events")
-                    if autoFishingConfig.instantCatchMode then
-                        progress.Size = UDim2.new(0.9, 0, 1, 0)
-                        if events then
-                            local reelupdate = events:FindFirstChild("reelupdate") or events:FindFirstChild("reelUpdate")
-                            if reelupdate then pcall(function() reelupdate:FireServer(90) end) end
-                        end
-                        task.wait(autoFishingConfig.reelAnimationSpeed)
-                    end
+            -- Coba fire remote event 'reelfinished' untuk mempercepat proses
+            -- Dilakukan setelah progress bar penuh
+            local events = ReplicatedStorage:FindFirstChild("events") or ReplicatedStorage:FindFirstChild("Events")
+            if events then
+                local reelfinished = events:FindFirstChild("reelfinished") or events:FindFirstChild("reelFinished")
+                if reelfinished then
+                    pcall(function() reelfinished:FireServer(1000, true) end)
+                end
+            end
 
-                    progress.Size = UDim2.new(1, 0, 1, 0)
-                    if events then
-                        local reelupdate = events:FindFirstChild("reelupdate") or events:FindFirstChild("reelUpdate")
-                        if reelupdate then pcall(function() reelupdate:FireServer(100) end) end
-                    end
-                    farm.reelAnimationComplete = true
+            -- FIX: Modifikasi alur untuk menunggu animasi tangkapan ikan.
+            -- 1. Tunggu hingga UI reel hilang.
+            local reelDisappeared = false
+            local startTime = tick()
+            while tick() - startTime < 2 do -- Timeout 2 detik
+                if not PlayerGui:FindFirstChild("reel") then
+                    reelDisappeared = true
+                    break
+                end
+                task.wait()
+            end
 
-                    if events then
-                        local reelfinished = events:FindFirstChild("reelfinished") or events:FindFirstChild("reelFinished")
-                        if reelfinished then
-                            for i = 1, 5 do
-                                pcall(function() reelfinished:FireServer(100) end)
-                                pcall(function() reelfinished:FireServer(100, true) end)
-                                pcall(function() reelfinished:FireServer({progress = 100, success = true}) end)
-                                -- FIX: Ganti task.wait() dengan Heartbeat:Wait() untuk menghindari lag/stutter
-                                RunService.Heartbeat:Wait()
+            if reelDisappeared then
+                -- FIX: Tambahkan jeda singkat WAJIB setelah reel bar hilang.
+                -- Ini memberi waktu bagi game untuk memunculkan UI animasi tangkapan.
+                task.wait(0.25)
+
+                fishing_utility.updateStatus("Menunggu animasi tangkapan...")
+                -- 2. Tunggu hingga UI animasi tangkapan muncul dan kemudian hilang.
+                -- FIX: Perluas daftar kata kunci untuk mencakup lebih banyak kemungkinan nama UI.
+                local catchUiKeywords = {"caught", "itemget", "reward", "fishdisplay", "youcaught", "iteminfo", "rewardui"}
+                local catchUi = nil
+                startTime = tick()
+                -- Kurangi timeout pencarian karena kita sudah punya jeda wajib
+                while tick() - startTime < 1.5 do
+                    for _, keyword in ipairs(catchUiKeywords) do
+                        catchUi = PlayerGui:FindFirstChild(keyword, true)
+                        if catchUi then break end
+                    end
+                    if catchUi then break end
+                    task.wait(0.05) -- Cek setiap 50ms
+                end
+
+                if catchUi then
+                    -- UI tangkapan ditemukan, tunggu sampai hilang.
+                    while catchUi and catchUi.Parent do
+                        task.wait()
+                    end
+                else
+                    -- FIX: Jika UI tidak terdeteksi, gunakan jeda fallback yang lebih lama (1.5 detik)
+                    -- untuk memastikan animasi tetap terlihat.
+                    fishing_utility.updateStatus("Animasi tidak terdeteksi, menunggu fallback...")
+                    task.wait(1.5)
+                end
+
+                fishing_utility.updateStatus("Tangkapan selesai!")
+                if autoSell then task.wait(0.5); attemptAutoSell() end
+                farm.fishingComplete = true -- Baru set complete setelah semua animasi selesai.
+                farm.isReeling = false
+            else
+                -- Fallback jika UI reel tidak hilang (error).
+                fishing_utility.updateStatus("Gagal reel, mencoba lagi...")
+                farm.isReeling = false
+            end
+        end
+    end
+
+    local sellCandidates, sellAttempted = {}, {}
+    local sellPatterns = {
+        "sell", "sellfish", "sell_fish", "sellall", "sell_all", "sellfish", "sellitems",
+        "sellfishs", "sellfishes", "sellto", "sellto npc", "sellfishnpc", "vendor", "shop", "merchant"
+    }
+    local function collectSellCandidates()
+        sellCandidates = {}
+        local searchLocations = {
+            ReplicatedStorage,
+            ReplicatedStorage:FindFirstChild("events"),
+            ReplicatedStorage:FindFirstChild("Events"),
+            ReplicatedStorage:FindFirstChild("remotes"),
+            ReplicatedStorage:FindFirstChild("Remotes")
+        }
+
+        for _, location in ipairs(searchLocations) do
+            if location then
+                for _, child in ipairs(location:GetChildren()) do
+                    if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                        local lname = child.Name:lower()
+                        for _, p in ipairs(sellPatterns) do
+                            if lname:find(p) then
+                                table.insert(sellCandidates, child)
+                                break -- Lanjut ke child berikutnya setelah ditemukan satu pola
                             end
                         end
                     end
-
-                    local startTime = tick()
-                    while PlayerGui:FindFirstChild("reel") and farm.isReeling and (tick() - startTime < 0.5) do
-                        task.wait(0.01)
-                    end
-
-                    if not PlayerGui:FindFirstChild("reel") then
-                        -- FIX: Reset semua state yang relevan untuk memastikan cast berikutnya bisa berjalan
-                        farm.fishingComplete = true
-                        farm.isWaitingForFish = false
-                        farm.isReeling = false
-                        farm.catchAttempts = 0
-                        farm.lastCastSuccess = false -- Penting: Reset ini agar loop utama mau cast lagi
-                        fishing_utility.updateStatus("Fish caught! Ultra-fast casting...")
-                        if autoSell then attemptAutoSell() end
-                        return
-                    end
-
-                    task.delay(autoFishingConfig.reelWaitTime, function()
-                        if farm.isReeling then
-                            -- FIX: Reset semua state yang relevan untuk memastikan cast berikutnya bisa berjalan
-                            farm.fishingComplete = true
-                            farm.isWaitingForFish = false
-                            farm.isReeling = false
-                            farm.catchAttempts = 0
-                            farm.lastCastSuccess = false -- Penting: Reset ini agar loop utama mau cast lagi
-                            fishing_utility.updateStatus("Fish caught (fallback)!")
-                            if autoSell then attemptAutoSell() end
-                        end
-                    end)
-                end)
-            else
-                local events = ReplicatedStorage:FindFirstChild("events") or ReplicatedStorage:FindFirstChild("Events")
-                if events then
-                    local reelfinished = events:FindFirstChild("reelfinished") or events:FindFirstChild("reelFinished")
-                    if reelfinished then
-                        for i = 1, 5 do
-                            pcall(function() reelfinished:FireServer(100) end)
-                            pcall(function() reelfinished:FireServer(100, true) end)
-                            pcall(function() reelfinished:FireServer({progress = 100, success = true}) end)
-                            task.wait(0.01)
-                        end
-                    end
                 end
-                task.delay(autoFishingConfig.reelWaitTime, function()
-                    if farm.isReeling then
-                        -- FIX: Reset semua state yang relevan untuk memastikan cast berikutnya bisa berjalan
-                        farm.fishingComplete = true
-                        farm.isWaitingForFish = false
-                        farm.isReeling = false
-                        farm.catchAttempts = 0
-                        farm.lastCastSuccess = false -- Penting: Reset ini agar loop utama mau cast lagi
-                        fishing_utility.updateStatus("Fish caught (fallback)!")
-                        if autoSell then attemptAutoSell() end
-                    end
-                end)
             end
         end
 
-        function farm.detectFishBite()
-            if PlayerGui:FindFirstChild("shakeui") or PlayerGui:FindFirstChild("reel") then
-                if not farm.fishBiteDetected then
-                    farm.fishBiteDetected = true
-                    fishing_utility.updateStatus("Fish detected!")
+        if #sellCandidates == 0 then
+            if statusLabel then statusLabel.Text = "Status: Tidak ada event jual, mencoba semua..." end
+            -- Fallback: Jika tidak ada yang cocok, coba semua event di ReplicatedStorage
+            for _, child in ipairs(ReplicatedStorage:GetDescendants()) do
+                if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                    table.insert(sellCandidates, child)
                 end
-                return true
             end
+        end
+        if statusLabel then statusLabel.Text = "Status: Ditemukan " .. #sellCandidates .. " kandidat jual." end
+    end
+
+    local function tryInvokeCandidate(ev)
+        if not ev then return false end
+        local id = ev:GetFullName()
+        if sellAttempted[id] and (tick() - sellAttempted[id] < 1) then
             return false
         end
+        sellAttempted[id] = tick()
+
+        local attempts = {}
+        if ev:IsA("RemoteEvent") then
+            attempts = {
+                function() ev:FireServer() end,
+                function() ev:FireServer(true) end,
+                function() ev:FireServer("SellAll") end,
+                function() ev:FireServer("Sell") end,
+                function() ev:FireServer("Fish") end, -- Argumen tambahan
+                function() ev:FireServer("All") end,   -- Argumen tambahan
+                function() ev:FireServer(LocalPlayer) end,
+                function() ev:FireServer(0) end,
+                function() ev:FireServer({}) end,
+            }
+        else -- RemoteFunction
+            attempts = {
+                function() ev:InvokeServer() end,
+                function() ev:InvokeServer(true) end,
+                function() ev:InvokeServer("SellAll") end,
+                function() ev:InvokeServer(LocalPlayer) end,
+                function() ev:InvokeServer("Fish") end, -- Argumen tambahan
+                function() ev:InvokeServer("All") end,   -- Argumen tambahan
+                function() ev:InvokeServer({}) end,
+            }
+        end
+
+        for _, fn in ipairs(attempts) do
+            if pcall(fn) then return true end
+        end
+        return false
+    end
+
+    local function attemptAutoSell()
+        fishing_utility.updateStatus("Mencoba menjual...")
+        if #sellCandidates == 0 then
+            collectSellCandidates()
+            if #sellCandidates == 0 then
+                if statusLabel then statusLabel.Text = "Status: Gagal, tidak ada remote event." end
+                return false
+            end
+        end
+
+        for _, ev in ipairs(sellCandidates) do
+            if tryInvokeCandidate(ev) then
+                fishing_utility.updateStatus("Berhasil menjual!")
+                return true
+            end
+        end
+        fishing_utility.updateStatus("Percobaan menjual selesai.")
+        return false
     end
 
     -- UI isi panel fishing (dengan status label)
@@ -1022,7 +996,7 @@
     local startBtn = Instance.new("TextButton")
     startBtn.Size = UDim2.new(1, -20, 0, 35)
     startBtn.Position = UDim2.new(0, 10, 0, 65)
-    startBtn.Text = "▶ Start"
+    startBtn.Text = "▶ Mulai Auto Fish"
     startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
     startBtn.TextColor3 = Color3.new(1,1,1)
     startBtn.Font = Enum.Font.SourceSansBold
@@ -1033,69 +1007,51 @@
     local function toggleAutoFishing()
         AutoFishing = not AutoFishing
         if AutoFishing then
-            startBtn.Text = "⏸ Stop"
+            startBtn.Text = "⏸ Hentikan Auto Fish"
             startBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-            fishing_utility.updateStatus("Starting...")
-            farm.isWaitingForFish, farm.fishingComplete, farm.isReeling, farm.reelAnimationComplete, farm.fishBiteDetected, farm.castAttempts, farm.lastCastSuccess = false, false, false, false, false, 0, false
+            fishing_utility.updateStatus("Memulai...")
+            -- Reset semua state
+            castTimeout = 0
+            farm.isCasting, farm.isWaitingForFish, farm.isReeling, farm.fishingComplete = false, false, false, false
 
             autoFishingConnection = RunService.RenderStepped:Connect(function()
                 if not AutoFishing then return end
-                local rod = farm.find_rod()
-                if rod then
-                    if autoFishingConfig.FreezeWhileFishing then farm.freeze_character(true) end
 
-                    if PlayerGui:FindFirstChild("reel") then
-                        if not farm.isReeling then farm.reel() end
-                        if farm.reelAnimationComplete then task.wait(0.05) end
-                    elseif PlayerGui:FindFirstChild("shakeui") then
-                        -- FIX: Ganti task.wait() dengan pengecekan waktu untuk menghindari lag
-                        if tick() - lastShakeTime > autoFishingConfig.shakeSpeed then
-                            farm.shake()
-                            lastShakeTime = tick()
-                        end
-                    elseif farm.fishingComplete then
-                        -- FIX: Beri jeda sedikit lebih lama untuk memastikan semua state dari reel() sudah selesai
-                        task.wait(autoFishingConfig.fastCastDelay + 0.1)
-                        farm.fishingComplete = false -- Reset flag setelah digunakan
-                        farm.lastCastSuccess = false -- Reset agar bisa cast lagi
-                        if not farm.cast() then
-                            -- Jika cast gagal, reset state agar loop utama bisa mencoba lagi
-                            farm.isWaitingForFish = false
-                            farm.lastCastSuccess = false
-                        end
-                    elseif farm.isWaitingForFish and farm.detectFishBite() then
-                        -- Gigitan ikan terdeteksi, loop akan menanganinya di frame berikutnya
-                    elseif not farm.isWaitingForFish and not farm.isReeling and not farm.lastCastSuccess then
-                        -- Kondisi utama untuk cast (awal atau setelah gagal)
-                        -- Beri jeda untuk mencegah spam cast yang tidak perlu
-                        if tick() - farm.last_cast_time > autoFishingConfig.recastDelay then
-                            if farm.cast() then
-                                -- Cast berhasil, tidak perlu melakukan apa-apa lagi di frame ini
-                            else
-                                -- Cast gagal, reset state agar bisa mencoba lagi setelah delay
-                                farm.isWaitingForFish = false
-                                farm.lastCastSuccess = false
-                            end
-                        end
-                    end
-                else
-                    fishing_utility.updateStatus("No fishing rod found!")
-                    farm.freeze_character(false)
-                    farm.isWaitingForFish, farm.fishingComplete, farm.isReeling, farm.reelAnimationComplete = false, false, false, false
-                    task.wait(1)
+                -- Prioritas tertinggi: Reel
+                if PlayerGui:FindFirstChild("reel") then
+                    castTimeout = 0 -- Reset timeout karena UI muncul
+                    farm.reel()
+                -- Prioritas kedua: Shake
+                elseif PlayerGui:FindFirstChild("shakeui") then
+                    castTimeout = 0 -- Reset timeout karena UI muncul
+                    farm.shake()
+                    task.wait(autoFishingConfig.shakeSpeed)
+                -- Prioritas ketiga: Cast ulang setelah selesai
+                elseif farm.fishingComplete then
+                    farm.fishingComplete = false -- Reset flag
+                    task.wait(autoFishingConfig.recastDelay)
+                    farm.cast()
+                -- Kondisi default: Cast jika tidak sedang melakukan apa-apa
+                elseif not farm.isWaitingForFish and not farm.isReeling and not farm.isCasting then
+                    farm.cast()
+                -- FIX: Deteksi lemparan gagal jika timeout terlampaui
+                elseif castTimeout > 0 and tick() > castTimeout then
+                    fishing_utility.updateStatus("Lemparan gagal, mencoba lagi...")
+                    castTimeout = 0 -- Reset timeout
+                    farm.isWaitingForFish = false -- Izinkan untuk melempar lagi
+                    task.wait(0.2) -- Jeda singkat sebelum mencoba lagi
+                    farm.cast()
                 end
             end)
         else
-            startBtn.Text = "▶ Start"
+            startBtn.Text = "▶ Mulai Auto Fish"
             startBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
-            fishing_utility.updateStatus("Stopping...")
-            farm.freeze_character(false)
-            farm.isWaitingForFish, farm.fishingComplete, farm.isReeling, farm.reelAnimationComplete = false, false, false, false
+            fishing_utility.updateStatus("Berhenti.")
             if autoFishingConnection then
                 autoFishingConnection:Disconnect()
                 autoFishingConnection = nil
+                castTimeout = 0 -- Pastikan timeout direset saat berhenti
             end
-            fishing_utility.updateStatus("Stopped")
         end
     end
 
@@ -1114,14 +1070,9 @@
 
     sellBtn.MouseButton1Click:Connect(function()
         autoSell = not autoSell
-        if autoSell then
-            sellBtn.Text = "Auto Sell: ON"
-            sellBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-            collectSellCandidates()
-        else
-            sellBtn.Text = "Auto Sell: OFF"
-            sellBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        end
+        sellBtn.Text = "Auto Sell: " .. (autoSell and "ON" or "OFF")
+        sellBtn.BackgroundColor3 = autoSell and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 100, 100)
+        if autoSell then collectSellCandidates() end
     end)
 
     --------------------------------------------------------------------
@@ -2438,12 +2389,9 @@
     -- FUNGSI GLOBAL
     --------------------------------------------------------------------
     local function stopAllFeatures()
-        -- Stop Auto Fishing
-        if AutoFishing then
-            toggleAutoFishing() -- This will handle all the state changes and disconnections
-        end
-
-        -- Stop Flying
+        -- Hentikan Auto Fishing
+        if AutoFishing then toggleAutoFishing() end
+        -- Hentikan Flying
         if isFlying then
             toggleFly(false)
             flyToggleBtn.Text = "✈️ Fly: OFF"
@@ -2588,7 +2536,7 @@
                     -- Terapkan pengaturan yang dimuat
                     config.fpsCap = decodedSettings.fpsCap or config.fpsCap
                     pcall(function() setfpscap(config.fpsCap) end)
-                    autoSell = decodedSettings.autoSell ~= nil and decodedSettings.autoSell or autoSell                    flySpeed = decodedSettings.flySpeed or flySpeed
+                    autoSell = decodedSettings.autoSell or false
                     currentJumpPower = decodedSettings.jumpPower or currentJumpPower
                     isInfiniteJumpEnabled = decodedSettings.infiniteJump or false
 
@@ -2636,7 +2584,7 @@
     fpsBox.Text = tostring(config.fpsCap)
     fpsBoostBtn.Text = "🚀 FPS Boost: " .. (isFpsBoosted and "ON" or "OFF")
     speedLabel.Text = "Speed: " .. flySpeed
-    wsLabel.Text = "Speed: " .. currentWalkSpaeed
+    wsLabel.Text = "Speed: " .. currentWalkSpeed
     jpLabel.Text = "Jump: " .. currentJumpPower
     if isInfiniteJumpEnabled then
         infiniteJumpToggleBtn.Text = "♾️ Infinite Jump: ON"
@@ -2660,7 +2608,7 @@
 
     -- Penjaga GUI (Anti-Hilang)
     RunService.Heartbeat:Connect(function()
-        if gui and gui.Parent ~= game:GetSeravice("CoreGui") then
+        if gui and gui.Parent ~= game:GetService("CoreGui") then
             gui.Parent = game:GetService("CoreGui")
         end
     end)
