@@ -822,10 +822,10 @@
 				-- FIX: Tambahkan jeda 1 detik jika reeling terjadi tepat setelah shaking.
 				if farm.justFinishedShaking then
 					fishing_utility.updateStatus("Jeda setelah goyangan (Reel)...")
-					task.wait(0.5) -- Jeda yang sedikit lebih lama untuk stabilitas setelah goyangan
+					task.wait(0.27) -- Jeda yang sedikit lebih lama untuk stabilitas setelah goyangan
 					farm.justFinishedShaking = false -- FIX: Reset state ke false, bukan true
 				else
-					task.wait(autoFishingConfig.reelActivationDelay + 0.2) -- Tambah sedikit jeda untuk stabilitas
+					task.wait(autoFishingConfig.reelActivationDelay + 0.3) -- Tambah sedikit jeda untuk stabilitas
 				end
 
 				local reel_bar = reel_ui:FindFirstChild("bar")
@@ -867,7 +867,7 @@
 				if reelDisappeared then
 					-- FIX: Tambahkan jeda singkat WAJIB setelah reel bar hilang.
 					-- Ini memberi waktu bagi game untuk memunculkan UI animasi tangkapan.
-					task.wait(0.3) -- Sedikit menambah jeda untuk stabilitas
+					task.wait(0.2) -- Sedikit menambah jeda untuk stabilitas
 
 					fishing_utility.updateStatus("Menunggu animasi tangkapan...")
 					-- 2. Tunggu hingga UI animasi tangkapan muncul dan kemudian hilang.
@@ -897,7 +897,7 @@
 						-- FIX: Jika UI tidak terdeteksi, gunakan jeda fallback yang lebih lama (1.5 detik)
 						-- untuk memastikan animasi tetap terlihat.
 						fishing_utility.updateStatus("Animasi tidak terdeteksi, menunggu fallback...")
-						task.wait(1.5)
+						task.wait(1)
 					end
 
 					fishing_utility.updateStatus("Tangkapan selesai!")
