@@ -616,11 +616,11 @@
     -- Konfigurasi untuk auto-fishing, bisa disesuaikan
     local autoFishingConfig = {
         castHoldDuration = 0.2,      -- Durasi menahan klik saat melempar (untuk 'perfect cast')
-        castDelay = 0.2,             -- Jeda setelah melempar
-        recastDelay = 0.4,           -- Jeda sebelum mencoba melempar ulang jika gagal
+        castDelay = 0.1,             -- Jeda setelah melempar
+        recastDelay = 0.1,           -- Jeda sebelum mencoba melempar ulang jika gagal
         shakeSpeed = 0.1,           -- Jeda antar goyangan (dipercepat)
-        reelWaitTime = 0.6,          -- Waktu tunggu setelah reel untuk memastikan tangkapan terdaftar
-        reelActivationDelay = 0.3,   -- Jeda (detik) setelah UI reel muncul sebelum instant catch dimulai
+        reelWaitTime = 0.3,          -- Waktu tunggu setelah reel untuk memastikan tangkapan terdaftar
+        reelActivationDelay = 0.2,   -- Jeda (detik) setelah UI reel muncul sebelum instant catch dimulai
         instantCatchMode = true,     -- Mode tangkap instan
         findRodRetries = 3,          -- Berapa kali mencoba mencari pancing sebelum menyerah
         findRodDelay = 1.0           -- Jeda antar percobaan mencari pancing
@@ -821,7 +821,7 @@
             -- FIX: Tambahkan jeda 1 detik jika reeling terjadi tepat setelah shaking.
             if farm.justFinishedShaking then
                 fishing_utility.updateStatus("Jeda setelah goyangan...")
-                task.wait(1.0) -- Jeda 1 detik yang lebih konsisten setelah goyangan
+                task.wait(0.86) -- Jeda 1 detik yang lebih konsisten setelah goyangan
                 farm.justFinishedShaking = false -- Reset state
             else
                 task.wait(autoFishingConfig.reelActivationDelay) -- Gunakan jeda normal jika tidak
