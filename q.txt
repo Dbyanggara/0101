@@ -616,8 +616,8 @@
 		-- Konfigurasi untuk auto-fishing, bisa disesuaikan
 		local autoFishingConfig = {
 			castHoldDuration = 0.2,      -- Durasi menahan klik saat melempar (untuk 'perfect cast')
-			castDelay = 0.2,             -- Jeda setelah melempar
-			recastDelay = 0.1,           -- Jeda sebelum mencoba melempar ulang jika gagal
+			castDelay = 0.2,             -- Jeda setelah melempar (tidak digunakan secara langsung di loop utama)
+			recastDelay = 0,             -- Jeda sebelum mencoba melempar ulang jika gagal (dipercepat)
 			shakeSpeed = 0.1,           -- Jeda antar goyangan (dipercepat)
 			reelWaitTime = 0.4,          -- Waktu tunggu setelah reel untuk memastikan tangkapan terdaftar
 			reelActivationDelay = 0.3,   -- Jeda (detik) setelah UI reel muncul sebelum instant catch dimulai
@@ -821,11 +821,11 @@
 
 				-- FIX: Tambahkan jeda 1 detik jika reeling terjadi tepat setelah shaking.
 				if farm.justFinishedShaking then
-					fishing_utility.updateStatus("Jeda setelah goyangan...")
-					task.wait(0.5) -- Jeda 1 detik yang lebih konsisten setelah goyangan
-					farm.justFinishedShaking = true -- Reset state
+					fishing_utility.updateStatus("Jeda setelah goyangan (Reel)...")
+					task.wait(0.5) -- Jeda yang sedikit lebih lama untuk stabilitas setelah goyangan
+					farm.justFinishedShaking = false -- FIX: Reset state ke false, bukan true
 				else
-					task.wait(autoFishingConfig.reelActivationDelay) -- Gunakan jeda normal jika tidak
+					task.wait(autoFishingConfig.reelActivationDelay + 0.2) -- Tambah sedikit jeda untuk stabilitas
 				end
 
 				local reel_bar = reel_ui:FindFirstChild("bar")
@@ -853,30 +853,30 @@
 				end
 
 				-- FIX: Modifikasi alur untuk menunggu animasi tangkapan ikan.
-				-- 1. Tunggu hingga UI reel hilang.
+				-- 1. Tunggu hingga UI reel hilang dengan lebih andal.
 				local reelDisappeared = false
 				local startTime = tick()
-				while tick() - startTime < 1.8 do -- Timeout 2 detik
+				while tick() - startTime < 2.0 do -- Timeout 2 detik
 					if not PlayerGui:FindFirstChild("reel") then
 						reelDisappeared = true
 						break
 					end
-					task.wait()
+					RunService.Heartbeat:Wait() -- Gunakan Heartbeat:Wait() untuk pengecekan yang lebih presisi
 				end
 
 				if reelDisappeared then
 					-- FIX: Tambahkan jeda singkat WAJIB setelah reel bar hilang.
 					-- Ini memberi waktu bagi game untuk memunculkan UI animasi tangkapan.
-					task.wait(0.22) -- Sedikit menambah jeda untuk stabilitas
+					task.wait(0.3) -- Sedikit menambah jeda untuk stabilitas
 
 					fishing_utility.updateStatus("Menunggu animasi tangkapan...")
 					-- 2. Tunggu hingga UI animasi tangkapan muncul dan kemudian hilang.
 					-- FIX: Perluas daftar kata kunci untuk mencakup lebih banyak kemungkinan nama UI.
-					local catchUiKeywords = {"caught", "itemget", "reward", "fishdisplay", "youcaught", "iteminfo", "rewardui"}
+					local catchUiKeywords = {"caught", "itemget", "reward", "fishdisplay", "youcaught", "iteminfo", "rewardui", "newitem"}
 					local catchUi = nil
 					startTime = tick()
 					-- Kurangi timeout pencarian karena kita sudah punya jeda wajib
-					while tick() - startTime < 1.1 do
+					while tick() - startTime < 1.2 do
 						for _, keyword in ipairs(catchUiKeywords) do -- FIX: Gunakan pcall untuk keamanan saat mencari child
 							catchUi = PlayerGui:FindFirstChild(keyword, true)
 							if catchUi then break end
@@ -890,14 +890,14 @@
 						-- FIX: Tambahkan timeout untuk mencegah stuck jika UI tidak pernah hilang.
 						local waitStartTime = tick()
 						while catchUi and catchUi.Parent and (tick() - waitStartTime < 5) do -- Timeout 5 detik
-							task.wait()
+							RunService.Heartbeat:Wait()
 						end
 						-- Jika loop selesai karena timeout, tidak masalah, kita tetap lanjut.
 					else
 						-- FIX: Jika UI tidak terdeteksi, gunakan jeda fallback yang lebih lama (1.5 detik)
 						-- untuk memastikan animasi tetap terlihat.
 						fishing_utility.updateStatus("Animasi tidak terdeteksi, menunggu fallback...")
-						task.wait(0.5)
+						task.wait(1.5)
 					end
 
 					fishing_utility.updateStatus("Tangkapan selesai!")
