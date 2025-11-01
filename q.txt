@@ -822,7 +822,7 @@
 				-- FIX: Tambahkan jeda 1 detik jika reeling terjadi tepat setelah shaking.
 				if farm.justFinishedShaking then
 					fishing_utility.updateStatus("Jeda setelah goyangan (Reel)...")
-					task.wait(0.27) -- Jeda yang sedikit lebih lama untuk stabilitas setelah goyangan
+					task.wait(0.255) -- Jeda yang sedikit lebih lama untuk stabilitas setelah goyangan
 					farm.justFinishedShaking = false -- FIX: Reset state ke false, bukan true
 				else
 					task.wait(autoFishingConfig.reelActivationDelay + 0.3) -- Tambah sedikit jeda untuk stabilitas
@@ -898,11 +898,13 @@
 						-- untuk memastikan animasi tetap terlihat.
 						fishing_utility.updateStatus("Animasi tidak terdeteksi, menunggu fallback...")
 						task.wait(1)
-					end
+                    end
 
-					fishing_utility.updateStatus("Tangkapan selesai!")
-					farm.fishingComplete = true -- Baru set complete setelah semua animasi selesai.
-					farm.isReeling = false
+                    -- OPTIMASI: Langsung cast ulang tanpa menunggu loop utama.
+                    fishing_utility.updateStatus("Tangkapan selesai, melempar ulang...")
+                    farm.isReeling = false
+                    farm.isWaitingForFish = false -- Reset state untuk cast berikutnya
+                    farm.cast() -- Panggil cast secara langsung di sini
 				else
 					-- Fallback jika UI reel tidak hilang (error).
 					fishing_utility.updateStatus("Gagal reel, mencoba lagi...")
@@ -980,11 +982,6 @@
 						end
 						farm.shake()
 					-- Prioritas 3: Cast ulang setelah siklus selesai
-					elseif farm.fishingComplete then
-						farm.fishingComplete = false -- Reset flag
-						farm.isWaitingForFish = false -- Pastikan state ini juga di-reset
-						task.wait(autoFishingConfig.recastDelay) -- Beri jeda sebelum melempar lagi
-						farm.cast()
 					-- Prioritas 4 (Kondisi default): Cast jika tidak sedang melakukan apa-apa
 					elseif not farm.isWaitingForFish and not farm.isReeling then
 						farm.cast()
