@@ -190,12 +190,33 @@ local RPath = {"Packages", "_Index", "sleitnick_net@0.2.0", "net"}
 local PlayerDataReplion = nil
 
 local function GetRemote(remotePath, name, timeout)
-    local currentInstance = RepStorage
-    for _, childName in ipairs(remotePath) do
-        currentInstance = currentInstance:WaitForChild(childName, timeout or 0.5)
-        if not currentInstance then return nil end
+    local function tryPath(path)
+        local currentInstance = RepStorage
+        for _, childName in ipairs(path) do
+            currentInstance = currentInstance:FindFirstChild(childName) or currentInstance:WaitForChild(childName, timeout or 0.5)
+            if not currentInstance then return nil end
+        end
+
+        -- Cari langsung lalu fallback ke WaitForChild (tidak memaksa error)
+        local remote = currentInstance:FindFirstChild(name) or currentInstance:FindFirstChild(name, true)
+        if remote then return remote end
+
+        local ok, waited = pcall(function()
+            return currentInstance:WaitForChild(name, timeout or 0.5)
+        end)
+        if ok then return waited end
+
+        return nil
     end
-    return currentInstance:FindFirstChild(name)
+
+    -- Jika remotePath adalah tabel, coba dulu
+    if typeof(remotePath) == "table" then
+        local found = tryPath(remotePath)
+        if found then return found end
+    end
+
+    -- Fallback: cari secara rekursif di RepStorage
+    return RepStorage:FindFirstChild(name, true)
 end
 
 local function GetHRP()
@@ -240,7 +261,53 @@ local function GetPlayerDataReplion()
     return PlayerDataReplion
 end
 
-local RF_SellAllItems = GetRemote(RPath, "RF/SellAllItems", 5)
+local RF_SellAllItems = nil
+local sellRemoteMissingWarned = false
+
+local function GetSellRemote()
+    if RF_SellAllItems and RF_SellAllItems.Parent then return RF_SellAllItems end
+
+    local candidates = {
+        { path = RPath, name = "RF/SellAllItems" },
+        { path = RPath, name = "SellAllItems" },
+        { path = {"Remotes", "RF"}, name = "SellAllItems" },
+        { path = {"Remotes"}, name = "SellAllItems" },
+        { path = {"RF"}, name = "SellAllItems" },
+    }
+
+    for _, cfg in ipairs(candidates) do
+        local remote = GetRemote(cfg.path, cfg.name, 2)
+        if remote then
+            RF_SellAllItems = remote
+            return remote
+        end
+    end
+
+    -- Fallback pencarian rekursif penuh
+    RF_SellAllItems = RepStorage:FindFirstChild("SellAllItems", true)
+
+    if not RF_SellAllItems and not sellRemoteMissingWarned then
+        sellRemoteMissingWarned = true
+        warn("[RockHub] Remote SellAllItems tidak ditemukan. Auto-sell dinonaktifkan sementara.")
+    end
+
+    return RF_SellAllItems
+end
+
+local function InvokeSellAll()
+    local remote = GetSellRemote()
+    if not remote then return false end
+
+    local ok, err = pcall(function()
+        remote:InvokeServer()
+    end)
+
+    if not ok then
+        warn("[RockHub] Invoke SellAllItems gagal: " .. tostring(err))
+        return false
+    end
+    return true
+end
 
 local function GetFishNameAndRarity(item)
     local name = item.Identifier or "Unknown"
@@ -2187,9 +2254,7 @@ do
         if autoSellDelayThread then task.cancel(autoSellDelayThread) end
         autoSellDelayThread = task.spawn(function()
             while autoSellDelayState do
-                if RF_SellAllItems then
-                    pcall(function() RF_SellAllItems:InvokeServer() end)
-                end
+                InvokeSellAll()
                 task.wait(math.max(sellDelay, 1))
             end
         end)
@@ -2203,10 +2268,8 @@ do
                 local currentCount = GetFishCount()
 
                 if currentCount >= sellCount then
-                    if RF_SellAllItems then
-                        pcall(function() RF_SellAllItems:InvokeServer() end)
-                        task.wait(1)
-                    end
+                    InvokeSellAll()
+                    task.wait(1)
                 end
                 task.wait(1)
             end
@@ -2233,9 +2296,7 @@ do
             while autoSellState do
                 if autoSellMethod == "Delay" then
                     -- === LOGIC BY DELAY ===
-                    if RF_SellAllItems then
-                        pcall(function() RF_SellAllItems:InvokeServer() end)
-                    end
+                    InvokeSellAll()
                     -- Wait sesuai input (minimal 1 detik biar ga crash)
                     task.wait(math.max(autoSellValue, 1))
 
@@ -2244,8 +2305,7 @@ do
                     local currentCount = GetFishCount() -- Pastikan fungsi GetFishCount ada di atas
 
                     if currentCount >= autoSellValue then
-                        if RF_SellAllItems then
-                            pcall(function() RF_SellAllItems:InvokeServer() end)
+                        if InvokeSellAll() then
                             WindUI:Notify({ Title = "Auto Sell", Content = "Menjual " .. currentCount .. " items.", Duration = 2, Icon = "dollar-sign" })
                             task.wait(2) -- Cooldown sebentar setelah jual
                         end
@@ -2322,8 +2382,10 @@ do
         Callback = function(state)
             autoSellState = state
             if state then
-                if not RF_SellAllItems then
+                if not GetSellRemote() then
                     WindUI:Notify({ Title = "Error", Content = "Remote Sell tidak ditemukan.", Duration = 3, Icon = "x" })
+                    autoSellState = false
+                    if togSell and togSell.Set then togSell:Set(false) end
                     return false
                 end
 
@@ -3581,6 +3643,10 @@ do
 
     local selectedTargetPlayer = nil -- Nama pemain yang dipilih
     local selectedTargetArea = nil -- Nama area yang dipilih
+    local safeAreaNames = (typeof(AreaNames) == "table" and AreaNames) or {}
+    if #safeAreaNames == 0 then
+        safeAreaNames = {"(Area list unavailable)"}
+    end
 
     -- Helper: Mengambil daftar pemain yang sedang di server (diambil dari kode Automatic)
     local function GetPlayerListOptions()
@@ -3674,7 +3740,7 @@ do
 
     local AreaDropdown = telearea:Dropdown({
         Title = "Select Target Area",
-        Values = AreaNames, -- Menggunakan variabel AreaNames dari Fishing Tab
+        Values = safeAreaNames, -- Menggunakan list aman agar tab tidak error
         AllowNone = true,
         Callback = function(name)
             selectedTargetArea = name
@@ -4401,7 +4467,6 @@ do
 
     local RF_PurchaseFishingRod = GetRemote(RPath, "RF/PurchaseFishingRod")
     local RF_PurchaseBait = GetRemote(RPath, "RF/PurchaseBait")
-    local RF_SellAllItems = GetRemote(RPath, "RF/SellAllItems")
 
     local RF_ChargeFishingRod = GetRemote(RPath, "RF/ChargeFishingRod")
     local RF_RequestFishingMinigameStarted = GetRemote(RPath, "RF/RequestFishingMinigameStarted")
@@ -4844,7 +4909,10 @@ do
 
         -- Auto Sell
         KAITUN_AUTOSELL_THREAD = task.spawn(function()
-            while KAITUN_ACTIVE do pcall(function() RF_SellAllItems:InvokeServer() end) task.wait(30) end
+            while KAITUN_ACTIVE do
+                InvokeSellAll()
+                task.wait(30)
+            end
         end)
 
         -- Auto Equip
