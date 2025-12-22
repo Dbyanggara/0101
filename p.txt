@@ -1798,9 +1798,9 @@ do
     -- 3. INSTANT FISHING (BLATANT) - V5 (PERFECTION + GHOST UI)
     local blatant = farm:Section({ Title = "Blatant Mode", TextSize = 20, })
 
-    local completeDelay = 3.055
-    local cancelDelay = 0.3
-    local loopInterval = 1.715
+    local completeDelay = 0.25
+    local cancelDelay = 0.05
+    local loopInterval = 0.333
 
     _G.RockHub_BlatantActive = false
 
@@ -1910,7 +1910,7 @@ do
         Title = "Blatant Interval", Value = tostring(loopInterval), Icon = "fast-forward", Type = "Input", Placeholder = "1.58",
         Callback = function(input)
             local newInterval = tonumber(input)
-            if newInterval and newInterval >= 0.5 then loopInterval = newInterval end
+            if newInterval and newInterval >= 0.05 then loopInterval = newInterval end
         end
     }))
 
@@ -1918,7 +1918,7 @@ do
         Title = "Complete Delay", Value = tostring(completeDelay), Icon = "loader", Type = "Input", Placeholder = "2.75",
         Callback = function(input)
             local newDelay = tonumber(input)
-            if newDelay and newDelay >= 0.5 then completeDelay = newDelay end
+            if newDelay and newDelay >= 0.05 then completeDelay = newDelay end
         end
     }))
 
@@ -1926,7 +1926,7 @@ do
         Title = "Cancel Delay", Value = tostring(cancelDelay), Icon = "clock", Type = "Input", Placeholder = "0.3", Flag = "canlay",
         Callback = function(input)
             local newDelay = tonumber(input)
-            if newDelay and newDelay >= 0.1 then cancelDelay = newDelay end
+            if newDelay and newDelay >= 0.01 then cancelDelay = newDelay end
         end
     }))
 
